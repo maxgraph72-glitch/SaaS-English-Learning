@@ -89,6 +89,7 @@ Rules for future command documentation:
 - Do not add dependencies unless they are necessary and the reason is explained.
 - Do not create large abstractions before the product shape requires them.
 - Do not change the site's existing design, visual system, layout, styling, or overall look and feel without the user's explicit prior approval.
+- Treat `DESIGN_BASELINE.md` and its referenced Git version as the locked, user-approved visual baseline. Do not update that file or advance its baseline reference until the user explicitly approves the replacement design.
 - For UI work, keep the SaaS interface clean, focused, and practical rather than decorative.
 - For learning features, preserve the product intent: daily practice, measurable progress, and low-friction repetition.
 - Keep Obsidian planning notes separate from app code unless the task explicitly asks to import or sync them.
