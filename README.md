@@ -4,7 +4,7 @@ Daily English is an early MVP for a focused English-learning routine. The curren
 
 ## Implemented
 
-- Supabase email/password and Google authentication with cookie-based SSR sessions.
+- Supabase email/password authentication with cookie-based SSR sessions and optional Google sign-in.
 - User-owned vocabulary with case-insensitive duplicate protection.
 - Manual vocabulary entry and Google Sheets-compatible CSV import.
 - Intake, learning, weak, repeat, and known groups.
@@ -19,7 +19,7 @@ Daily English is an early MVP for a focused English-learning routine. The curren
 
 1. Copy the public variable names from `.env.example` into a local `.env.local` file and provide values from the Supabase project settings.
 2. Apply `supabase/migrations/20260713134023_vocabulary_spaced_repetition.sql` through the normal Supabase CLI migration workflow.
-3. Enable the Google Auth provider in the Supabase dashboard and add `/auth/callback` to the allowed redirect URLs if Google sign-in is required.
+3. If Google sign-in is required, enable the Google Auth provider, add `/auth/callback` to the allowed redirect URLs, and set `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED=true`.
 
 The application uses a publishable browser key only. Do not put a secret or service-role key in a `NEXT_PUBLIC_` variable.
 

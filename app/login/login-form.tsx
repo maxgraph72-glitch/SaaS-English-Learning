@@ -4,9 +4,11 @@ import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm({
+  googleAuthEnabled,
   initialError,
   nextPath,
 }: {
+  googleAuthEnabled: boolean;
   initialError?: string;
   nextPath: string;
 }) {
@@ -69,10 +71,14 @@ export function LoginForm({
       <h1 id="login-heading">{mode === "sign-in" ? "Continue learning" : "Create your account"}</h1>
       <p className="login-intro">Your vocabulary, review history, and progress stay private to your account.</p>
 
-      <button className="google-button" type="button" onClick={signInWithGoogle} disabled={pending}>
-        Continue with Google
-      </button>
-      <div className="login-divider"><span>or use email</span></div>
+      {googleAuthEnabled ? (
+        <>
+          <button className="google-button" type="button" onClick={signInWithGoogle} disabled={pending}>
+            Continue with Google
+          </button>
+          <div className="login-divider"><span>or use email</span></div>
+        </>
+      ) : null}
 
       <form onSubmit={submit}>
         <label>

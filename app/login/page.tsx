@@ -29,7 +29,11 @@ export default async function LoginPage({
         <strong>Learn a few words.</strong>
         <p>Review them exactly when they are due.</p>
       </div>
-      <LoginForm initialError={params.error} nextPath={nextPath} />
+      <LoginForm
+        googleAuthEnabled={process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true"}
+        initialError={params.error}
+        nextPath={nextPath}
+      />
     </main>
   );
 }
