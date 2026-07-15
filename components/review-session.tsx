@@ -310,7 +310,7 @@ export function ReviewSession({
                 {"Practice today's words"}
               </button>
             ) : (
-              <Link className="primary-button compact" href="/">
+              <Link className="primary-button compact" href="/dashboard">
                 Back to today
               </Link>
             )}

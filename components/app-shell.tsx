@@ -7,7 +7,7 @@ import { updateTimezoneAction } from "@/app/actions/vocabulary";
 import { createClient } from "@/lib/supabase/client";
 
 const navigation = [
-  { symbol: "⌂", label: "Today", href: "/" },
+  { symbol: "⌂", label: "Today", href: "/dashboard" },
   { symbol: "◇", label: "Vocabulary", href: "/vocabulary" },
   { symbol: "◌", label: "Review", href: "/review" },
   { symbol: "↗", label: "Progress", href: null },
@@ -37,7 +37,7 @@ const levelNames: Record<string, string> = {
 };
 
 function isNavigationActive(pathname: string, href: string) {
-  return pathname === href || (href !== "/" && pathname.startsWith(`${href}/`));
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function AppShell({
@@ -85,7 +85,7 @@ export function AppShell({
   return (
     <main className="app-shell">
       <aside className="sidebar" aria-label="Main navigation">
-        <Link className="brand" href="/" aria-label="Daily English home">
+        <Link className="brand" href="/dashboard" aria-label="Daily English today dashboard">
           <span className="brand-mark">D</span>
           <span>
             <strong>Daily</strong>
@@ -128,7 +128,7 @@ export function AppShell({
 
       <section className="workspace" id="top">
         <header className="topbar">
-          <Link className="mobile-brand" href="/" aria-label="Daily English home">
+          <Link className="mobile-brand" href="/dashboard" aria-label="Daily English today dashboard">
             <span className="brand-mark">D</span>
             <strong>Daily</strong>
           </Link>

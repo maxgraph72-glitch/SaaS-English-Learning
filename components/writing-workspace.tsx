@@ -118,7 +118,7 @@ export function WritingWorkspace({
           <p className="eyebrow">Daily writing</p>
           <h1>Writing is unavailable</h1>
           <p>{loadError}</p>
-          <Link className="secondary-button" href="/">Back to today</Link>
+          <Link className="secondary-button" href="/dashboard">Back to today</Link>
         </section>
       </div>
     );
@@ -194,7 +194,7 @@ export function WritingWorkspace({
         </section>
 
         <div className="writing-actions">
-          <Link className="primary-button compact" href="/">Back to today</Link>
+          <Link className="primary-button compact" href="/dashboard">Back to today</Link>
         </div>
       </div>
     );
@@ -231,7 +231,7 @@ export function WritingWorkspace({
             <button className="primary-button" type="button" disabled={phase === "checking"} onClick={() => void requestFeedback(state.entry!.id)}>
               {phase === "checking" ? "Checking…" : "Retry feedback"}
             </button>
-            <Link className="secondary-button" href="/">Back to today</Link>
+            <Link className="secondary-button" href="/dashboard">Back to today</Link>
           </div>
         </section>
       </div>

@@ -3,7 +3,13 @@
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export function LoginForm({ initialError }: { initialError?: string }) {
+export function LoginForm({
+  initialError,
+  nextPath,
+}: {
+  initialError?: string;
+  nextPath: string;
+}) {
   const [mode, setMode] = useState<"sign-in" | "sign-up">("sign-in");
   const [message, setMessage] = useState(initialError ?? "");
   const [pending, setPending] = useState(false);
@@ -33,15 +39,16 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       return;
     }
 
-    window.location.assign("/");
+    window.location.assign(nextPath);
   }
 
   async function signInWithGoogle() {
     setPending(true);
-    const redirectTo = `${window.location.origin}/auth/callback`;
+    const callbackUrl = new URL("/auth/callback", window.location.origin);
+    callbackUrl.searchParams.set("next", nextPath);
     const { error } = await createClient().auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo },
+      options: { redirectTo: callbackUrl.toString() },
     });
     if (error) {
       setMessage(error.message);

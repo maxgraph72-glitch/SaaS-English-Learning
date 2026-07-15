@@ -229,7 +229,7 @@ export function VocabularyStudySession({
             <Link className="primary-button compact" href="/vocabulary">
               Back to vocabulary
             </Link>
-            <Link className="secondary-button" href="/">
+            <Link className="secondary-button" href="/dashboard">
               Back to today
             </Link>
           </div>
