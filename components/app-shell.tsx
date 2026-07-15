@@ -2,17 +2,30 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { updateTimezoneAction } from "@/app/actions/vocabulary";
 import { createClient } from "@/lib/supabase/client";
 
 const navigation = [
-  { symbol: "⌂", label: "Today", href: "/" },
+  { symbol: "⌂", label: "Today", href: "/dashboard" },
   { symbol: "◇", label: "Vocabulary", href: "/vocabulary" },
   { symbol: "◌", label: "Review", href: "/review" },
   { symbol: "↗", label: "Progress", href: null },
-  { symbol: "⚙", label: "Settings", href: null },
+  { symbol: "⚙", label: "Settings", href: "/settings" },
 ] as const;
+
+const availableThemes = new Set([
+  "sunset",
+  "twilight",
+  "autumn",
+  "peach-horizon",
+  "amaranth-noir",
+  "crimson-black",
+  "signal-orange",
+  "branding-orange",
+  "web-slinger",
+]);
+const defaultTheme = "twilight";
 
 const levelNames: Record<string, string> = {
   A1: "Beginner",
@@ -22,6 +35,10 @@ const levelNames: Record<string, string> = {
   C1: "Advanced",
   C2: "Proficient",
 };
+
+function isNavigationActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function AppShell({
   children,
@@ -36,28 +53,21 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       const storedTheme = window.localStorage.getItem("daily-english-theme");
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const useDark = storedTheme ? storedTheme === "dark" : prefersDark;
-      setDarkMode(useDark);
-      document.documentElement.dataset.theme = useDark ? "dark" : "light";
+      const theme = storedTheme && availableThemes.has(storedTheme)
+        ? storedTheme
+        : defaultTheme;
+      document.documentElement.dataset.theme = theme;
+      window.localStorage.setItem("daily-english-theme", theme);
     });
 
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     if (timeZone) void updateTimezoneAction(timeZone);
     return () => window.cancelAnimationFrame(frame);
   }, []);
-
-  function toggleTheme() {
-    const next = !darkMode;
-    setDarkMode(next);
-    document.documentElement.dataset.theme = next ? "dark" : "light";
-    window.localStorage.setItem("daily-english-theme", next ? "dark" : "light");
-  }
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -75,7 +85,7 @@ export function AppShell({
   return (
     <main className="app-shell">
       <aside className="sidebar" aria-label="Main navigation">
-        <Link className="brand" href="/" aria-label="Daily English home">
+        <Link className="brand" href="/dashboard" aria-label="Daily English today dashboard">
           <span className="brand-mark">D</span>
           <span>
             <strong>Daily</strong>
@@ -87,7 +97,7 @@ export function AppShell({
           {navigation.map((item) =>
             item.href ? (
               <Link
-                className={pathname === item.href ? "nav-item active" : "nav-item"}
+                className={isNavigationActive(pathname, item.href) ? "nav-item active" : "nav-item"}
                 href={item.href}
                 key={item.label}
               >
@@ -118,20 +128,19 @@ export function AppShell({
 
       <section className="workspace" id="top">
         <header className="topbar">
-          <Link className="mobile-brand" href="/" aria-label="Daily English home">
+          <Link className="mobile-brand" href="/dashboard" aria-label="Daily English today dashboard">
             <span className="brand-mark">D</span>
             <strong>Daily</strong>
           </Link>
           <div className="topbar-actions">
-            <button
+            <Link
               className="theme-toggle"
-              type="button"
-              aria-label={darkMode ? "Use light theme" : "Use dark theme"}
-              aria-pressed={darkMode}
-              onClick={toggleTheme}
+              href="/settings"
+              aria-label="Choose color theme"
+              title="Color theme"
             >
-              <span aria-hidden="true">{darkMode ? "☀" : "☾"}</span>
-            </button>
+              <span aria-hidden="true">◐</span>
+            </Link>
             <button className="profile-button" type="button" onClick={signOut} aria-label="Sign out" title={email}>
               <span className="avatar">{initials || "DE"}</span>
               <span className="profile-copy">
@@ -148,7 +157,7 @@ export function AppShell({
       <nav className="mobile-nav" aria-label="Mobile navigation">
         {navigation.slice(0, 4).map((item) =>
           item.href ? (
-            <Link className={pathname === item.href ? "active" : ""} href={item.href} key={item.label}>
+            <Link className={isNavigationActive(pathname, item.href) ? "active" : ""} href={item.href} key={item.label}>
               <span aria-hidden="true">{item.symbol}</span>
               <small>{item.label}</small>
             </Link>

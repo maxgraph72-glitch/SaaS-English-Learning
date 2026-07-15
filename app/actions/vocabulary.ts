@@ -5,6 +5,16 @@ import { isValidTimeZone } from "@/lib/learning/calendar";
 import { requireViewer } from "@/lib/supabase/viewer";
 import type { DailyBlockStatus } from "@/lib/vocabulary/types";
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_MANAGED_ITEMS = 500;
+
+function revalidateVocabulary() {
+  revalidatePath("/vocabulary");
+  revalidatePath("/review");
+  revalidatePath("/");
+}
+
 export async function addVocabularyAction(wordInput: string, translationInput: string) {
   const word = wordInput.trim();
   const translation = translationInput.trim();
@@ -71,6 +81,99 @@ export async function importVocabularyAction(
     ok: true as const,
     added,
     duplicates: rows.length - added,
+  };
+}
+
+export async function updateVocabularyItemAction(input: {
+  itemId: string;
+  word: string;
+  translation: string;
+}) {
+  if (
+    !input ||
+    typeof input.itemId !== "string" ||
+    typeof input.word !== "string" ||
+    typeof input.translation !== "string"
+  ) {
+    return { ok: false as const, message: "Invalid vocabulary update." };
+  }
+  const word = input.word.trim();
+  const translation = input.translation.trim();
+  if (!UUID_PATTERN.test(input.itemId) || !word || !translation) {
+    return {
+      ok: false as const,
+      message: "Word and translation are required.",
+    };
+  }
+
+  const { supabase, user } = await requireViewer();
+  const { data, error } = await supabase
+    .from("vocabulary_items")
+    .update({ english_word: word, translation })
+    .eq("id", input.itemId)
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
+
+  if (error?.code === "23505") {
+    return {
+      ok: false as const,
+      message: `“${word}” is already in your vocabulary.`,
+    };
+  }
+  if (error || !data) {
+    return { ok: false as const, message: "This word could not be updated." };
+  }
+
+  revalidateVocabulary();
+  return { ok: true as const, message: `“${word}” was updated.` };
+}
+
+export async function deleteVocabularyItemsAction(itemIds: string[]) {
+  if (
+    !Array.isArray(itemIds) ||
+    itemIds.length === 0 ||
+    itemIds.length > MAX_MANAGED_ITEMS
+  ) {
+    return { ok: false as const, message: "Invalid vocabulary selection." };
+  }
+  const ids = Array.from(
+    new Set(
+      itemIds.filter(
+        (itemId): itemId is string =>
+          typeof itemId === "string" && UUID_PATTERN.test(itemId),
+      ),
+    ),
+  );
+  if (ids.length === 0) {
+    return {
+      ok: false as const,
+      message: "Select between 1 and 500 words to delete.",
+    };
+  }
+
+  const { supabase, user } = await requireViewer();
+  const { data, error } = await supabase
+    .from("vocabulary_items")
+    .delete()
+    .eq("user_id", user.id)
+    .in("id", ids)
+    .select("id");
+
+  if (error) {
+    return { ok: false as const, message: "The selected words could not be deleted." };
+  }
+
+  const deleted = data?.length ?? 0;
+  if (deleted === 0) {
+    return { ok: false as const, message: "No selected words were deleted." };
+  }
+
+  revalidateVocabulary();
+  return {
+    ok: true as const,
+    deleted,
+    message: `${deleted} ${deleted === 1 ? "word" : "words"} deleted.`,
   };
 }
 

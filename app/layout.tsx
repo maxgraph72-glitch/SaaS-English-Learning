@@ -1,28 +1,31 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { getRequestOrigin } from "@/lib/request-origin";
+import { publicSiteDescription, publicSiteName, publicSiteTitle } from "@/lib/seo";
 import "./globals.css";
 
-const title = "Daily — English practice that fits your day";
-const description =
-  "A focused daily routine for vocabulary, speaking, writing, and steady English progress.";
-
 export async function generateMetadata(): Promise<Metadata> {
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  const protocol = requestHeaders.get("x-forwarded-proto") ?? "https";
-  const metadataBase = host ? new URL(`${protocol}://${host}`) : new URL("http://localhost:3000");
+  const metadataBase = new URL(await getRequestOrigin());
 
   return {
     metadataBase,
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      images: [{ url: "/og.png", width: 1792, height: 1024, alt: title }],
+    title: {
+      default: publicSiteTitle,
+      template: `%s | ${publicSiteName}`,
     },
-    twitter: { card: "summary_large_image", title, description, images: ["/og.png"] },
+    description: publicSiteDescription,
+    openGraph: {
+      title: publicSiteTitle,
+      description: publicSiteDescription,
+      type: "website",
+      siteName: publicSiteName,
+      images: [{ url: "/og.png", width: 1792, height: 1024, alt: publicSiteTitle }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: publicSiteTitle,
+      description: publicSiteDescription,
+      images: ["/og.png"],
+    },
   };
 }
 

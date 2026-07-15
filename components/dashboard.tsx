@@ -9,7 +9,7 @@ const lessons = [
   { id: "vocabulary", number: "01", title: "Vocabulary", description: "Choose useful words and learn them at your pace", duration: "10 min", action: "Open vocabulary", tone: "mint", href: "/vocabulary" },
   { id: "speaking", number: "02", title: "Speak aloud", description: "Speaking practice is planned for the next learning stage", duration: "10 min", action: "Coming later", tone: "peach", href: null },
   { id: "writing", number: "03", title: "Daily writing", description: "Write a short entry and get focused AI feedback", duration: "10 min", action: "Open writing", tone: "lilac", href: "/writing" },
-  { id: "review", number: "04", title: "Quick review", description: "Review every word that is due or overdue", duration: "5 min", action: "Open review", tone: "sky", href: "/review" },
+  { id: "review", number: "04", title: "Quick review", description: "Review due words or reinforce what you learned today", duration: "5 min", action: "Open review", tone: "sky", href: "/review" },
 ] as const;
 
 const stageIntervals = [
@@ -140,7 +140,7 @@ export function Dashboard({ displayName, cefr, dueCount, vocabularyCount, initia
       <section className="insights-grid" aria-label="Learning insights">
         <article className="insight-card streak-card">
           <div className="card-heading"><div><p className="eyebrow">Review queue</p><h2>{dueCount} {dueCount === 1 ? "word due" : "words due"}</h2></div><span className="streak-badge" aria-hidden="true">✦</span></div>
-          <p>{dueCount > 0 ? "Due and overdue cards stay here until you review them." : "Your schedule is clear. Newly learned words appear tomorrow."}</p>
+          <p>{dueCount > 0 ? "Due and overdue cards stay here until you review them." : "Your schedule is clear. You can still practice today's newly learned words."}</p>
           <div className="week-dots" aria-label="Current review queue">
             {["N", "L", "W", "R", "K", "•", "•"].map((label, index) => <div key={`${label}-${index}`}><span className={index < Math.min(dueCount, 5) ? "done" : index === Math.min(dueCount, 5) ? "today" : ""}>{index < Math.min(dueCount, 5) ? "✓" : ""}</span><small>{label}</small></div>)}
           </div>
