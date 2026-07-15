@@ -68,7 +68,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const canonical = siteUrl(origin);
 
   return {
-    title: publicSiteTitle,
+    title: { absolute: publicSiteTitle },
     description: publicSiteDescription,
     alternates: { canonical },
     robots: { index: true, follow: true },
