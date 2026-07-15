@@ -91,4 +91,13 @@ describe("public launch search controls", () => {
       expect(source(`app/${segment}/layout.tsx`)).toContain("privatePageMetadata");
     }
   });
+
+  it("shows Google sign-in only when the provider is explicitly enabled", () => {
+    expect(source("app/login/page.tsx")).toContain(
+      'process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED === "true"',
+    );
+    expect(source("app/login/login-form.tsx")).toContain(
+      "googleAuthEnabled ?",
+    );
+  });
 });
