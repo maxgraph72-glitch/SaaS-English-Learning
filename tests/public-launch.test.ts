@@ -114,5 +114,11 @@ describe("public launch search controls", () => {
     );
     expect(browserClient).not.toContain("getSupabaseConfig");
     expect(browserClient).not.toContain("process.env");
+    expect(source("lib/supabase/config.ts")).toContain(
+      "process.env.SUPABASE_URL",
+    );
+    expect(source("proxy.ts")).not.toContain(
+      "process.env.NEXT_PUBLIC_SUPABASE_URL",
+    );
   });
 });
