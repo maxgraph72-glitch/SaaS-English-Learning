@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getRequestOrigin } from "@/lib/request-origin";
 import { publicSiteDescription, publicSiteName, publicSiteTitle } from "@/lib/seo";
+import { getSupabaseConfig, isSupabaseConfigured } from "@/lib/supabase/config";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -30,5 +31,22 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" suppressHydrationWarning><body>{children}</body></html>;
+  const supabaseConfig = isSupabaseConfigured() ? getSupabaseConfig() : null;
+
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        {supabaseConfig ? (
+          <>
+            <meta name="daily-english-supabase-url" content={supabaseConfig.url} />
+            <meta
+              name="daily-english-supabase-publishable-key"
+              content={supabaseConfig.publishableKey}
+            />
+          </>
+        ) : null}
+      </head>
+      <body>{children}</body>
+    </html>
+  );
 }

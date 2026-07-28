@@ -100,4 +100,19 @@ describe("public launch search controls", () => {
       "googleAuthEnabled ?",
     );
   });
+
+  it("provides the browser Supabase client with runtime production settings", () => {
+    const layout = source("app/layout.tsx");
+    const browserClient = source("lib/supabase/client.ts");
+
+    expect(layout).toContain('name="daily-english-supabase-url"');
+    expect(layout).toContain(
+      'name="daily-english-supabase-publishable-key"',
+    );
+    expect(browserClient).toContain(
+      'readMetaContent("daily-english-supabase-url")',
+    );
+    expect(browserClient).not.toContain("getSupabaseConfig");
+    expect(browserClient).not.toContain("process.env");
+  });
 });
