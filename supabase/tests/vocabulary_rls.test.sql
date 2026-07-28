@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
 
-select plan(7);
+select plan(13);
 
 insert into auth.users (id, email)
 values
@@ -40,6 +40,16 @@ values
     1,
     now(),
     current_date
+  ),
+  (
+    'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    '11111111-1111-4111-8111-111111111111',
+    'recover',
+    'восстанавливать',
+    'known',
+    4,
+    now() - interval '8 days',
+    current_date - 1
   );
 
 set local role authenticated;
@@ -52,8 +62,8 @@ select set_config(
 
 select is(
   (select count(*)::integer from public.vocabulary_items),
-  1,
-  'a learner can see exactly their own vocabulary'
+  2,
+  'a learner can see exactly their own vocabulary items'
 );
 select is(
   (select count(*)::integer from public.vocabulary_items where english_word = 'calm'),
@@ -100,6 +110,60 @@ select is(
   ),
   2,
   'a retried submission advances the stage only once'
+);
+
+select lives_ok(
+  $$ select count(*) from public.get_due_vocabulary() $$,
+  'loading the due queue applies missed-review decay'
+);
+select is(
+  (
+    select concat_ws(
+      '|',
+      repetition_stage,
+      next_review_date,
+      overdue_stage_decay_pending
+    )
+    from public.vocabulary_items
+    where id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+  ),
+  concat_ws('|', 3, current_date, true),
+  'a missed stage 4 review moves back once to stage 3 and stays due'
+);
+select lives_ok(
+  $$ select count(*) from public.get_due_vocabulary() $$,
+  'the due queue can be loaded repeatedly'
+);
+select is(
+  (
+    select repetition_stage::integer
+    from public.vocabulary_items
+    where id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+  ),
+  3,
+  'reloading the due queue does not apply another decay'
+);
+select is(
+  (
+    select concat_ws('|', group_after, stage_after, next_review_date)
+    from public.submit_vocabulary_review(
+      'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      true,
+      2000,
+      'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
+    )
+  ),
+  concat_ws('|', 'repeat', 3, current_date + 3),
+  'a fast recovery review keeps stage 3 and schedules three days from today'
+);
+select is(
+  (
+    select overdue_stage_decay_pending
+    from public.vocabulary_items
+    where id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+  ),
+  false,
+  'the missed-review penalty clears after the recovery review'
 );
 
 select set_config(

@@ -5,12 +5,21 @@ import { calendarDateInTimeZone } from "@/lib/learning/calendar";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireViewer } from "@/lib/supabase/viewer";
 import { selectLearnedTodayPracticeItems } from "@/lib/vocabulary/review-practice";
+import {
+  parseStudyItemIds,
+  restoreSelectionOrder,
+} from "@/lib/vocabulary/study-session";
 import type { VocabularyItem } from "@/lib/vocabulary/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function ReviewPage() {
+export default async function ReviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string | string[] }>;
+}) {
   if (!isSupabaseConfigured()) return <SetupNotice />;
+  const requestedIds = parseStudyItemIds((await searchParams).id);
   const { supabase, user } = await requireViewer();
   const requestTime = new Date();
   const recentLearningCutoff = new Date(
@@ -38,12 +47,16 @@ export default async function ReviewPage() {
     profile?.display_name?.trim() || user.email?.split("@")[0] || "Learner";
   const timeZone = settings?.timezone ?? "UTC";
   const today = calendarDateInTimeZone(requestTime, timeZone);
-  const scheduledQueue = (dueItems as VocabularyItem[] | null) ?? [];
+  const allScheduledItems = (dueItems as VocabularyItem[] | null) ?? [];
+  const scheduledQueue =
+    requestedIds.length > 0
+      ? restoreSelectionOrder(requestedIds, allScheduledItems)
+      : allScheduledItems;
   const learnedTodayQueue = selectLearnedTodayPracticeItems(
     (recentlyLearnedItems as VocabularyItem[] | null) ?? [],
     today,
     timeZone,
-    scheduledQueue.map((item) => item.id),
+    allScheduledItems.map((item) => item.id),
   );
 
   return (

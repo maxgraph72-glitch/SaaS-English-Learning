@@ -132,6 +132,14 @@ When a stage 1 word receives a `known` result, it advances to stage 2 and is due
 - A word appears at most once in a generated daily review queue.
 - Order due words by oldest due date first. For the same due date, use this priority: `learning`, `weak`, `repeat`, `known`.
 - A result schedules from the actual submission date. Do not backdate the next interval from an overdue due date.
+- When a review date is missed, move the word back exactly one repetition stage,
+  with stage 1 as the floor. Apply this decay only once for that missed due date,
+  even if the learner returns several days later or opens the queue repeatedly.
+- A decayed word remains due and is placed in `repeat`. A fast correct answer on
+  that recovery review keeps the decayed stage instead of immediately undoing
+  the penalty. Schedule its next review from the actual submission date using
+  the interval of the decayed stage. For example, a missed stage 4 review moves
+  to stage 3 and is next scheduled three calendar days after the recovery review.
 
 ## Vocabulary Management
 

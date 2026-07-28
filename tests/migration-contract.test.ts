@@ -8,6 +8,13 @@ const migration = readFileSync(
   ),
   "utf8",
 ).toLocaleLowerCase("en");
+const overdueMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260728150245_overdue_vocabulary_stage_decay.sql",
+    import.meta.url,
+  ),
+  "utf8",
+).toLocaleLowerCase("en");
 
 describe("database safety contract", () => {
   it("protects duplicate review and learned submissions transactionally", () => {
@@ -39,6 +46,27 @@ describe("database safety contract", () => {
     expect(migration).toContain("grant select on public.vocabulary_reviews to authenticated");
     expect(migration).not.toContain(
       "grant select, insert on public.vocabulary_reviews to authenticated",
+    );
+  });
+
+  it("applies one authenticated overdue decay and clears it after review", () => {
+    expect(overdueMigration).toContain(
+      "add column overdue_stage_decay_pending boolean not null default false",
+    );
+    expect(overdueMigration).toContain(
+      "greatest(item.repetition_stage - 1, 1)::smallint",
+    );
+    expect(overdueMigration).toContain(
+      "and not item.overdue_stage_decay_pending",
+    );
+    expect(overdueMigration).toContain(
+      "overdue_stage_decay_pending = false",
+    );
+    expect(overdueMigration).toContain(
+      "where item.user_id = v_user_id",
+    );
+    expect(overdueMigration).toContain(
+      "grant execute on function public.get_due_vocabulary() to authenticated",
     );
   });
 });

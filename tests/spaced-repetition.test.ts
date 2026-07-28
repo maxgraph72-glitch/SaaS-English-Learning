@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addCalendarDays,
   calculateReviewOutcome,
+  decayMissedStage,
   scheduleNewlyLearned,
   type RepetitionStage,
 } from "../lib/learning/spaced-repetition";
@@ -112,6 +113,27 @@ describe("spaced repetition scheduling", () => {
         reviewDate: "2026-08-20",
       }).nextReviewDate,
     ).toBe("2026-08-27");
+  });
+
+  it("moves a missed seven-day review back to the three-day stage once", () => {
+    expect(decayMissedStage(4)).toBe(3);
+    expect(
+      calculateReviewOutcome({
+        correct: true,
+        responseTimeMs: 2000,
+        currentStage: 4,
+        reviewDate: "2026-07-28",
+        missedReview: true,
+      }),
+    ).toEqual({
+      group: "repeat",
+      stage: 3,
+      nextReviewDate: "2026-07-31",
+    });
+  });
+
+  it("keeps a missed stage-one review at stage one", () => {
+    expect(decayMissedStage(1)).toBe(1);
   });
 
   it.each([

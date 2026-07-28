@@ -3,6 +3,7 @@ import {
   STUDY_SESSION_LIMIT,
   completeCurrentAfterConfirmation,
   getQueueProgress,
+  isReviewDue,
   isStudyEligible,
   parseStudyItemIds,
   resolveReviewShortcut,
@@ -75,6 +76,33 @@ describe("vocabulary study selection", () => {
         repetition_stage: 1,
         next_review_date: "2026-07-15",
       }),
+    ).toBe(false);
+  });
+
+  it("routes only scheduled words whose review date has arrived to Review", () => {
+    expect(
+      isReviewDue(
+        { repetition_stage: 1, next_review_date: "2026-07-28" },
+        "2026-07-28",
+      ),
+    ).toBe(true);
+    expect(
+      isReviewDue(
+        { repetition_stage: 3, next_review_date: "2026-07-27" },
+        "2026-07-28",
+      ),
+    ).toBe(true);
+    expect(
+      isReviewDue(
+        { repetition_stage: 1, next_review_date: "2026-07-29" },
+        "2026-07-28",
+      ),
+    ).toBe(false);
+    expect(
+      isReviewDue(
+        { repetition_stage: 0, next_review_date: null },
+        "2026-07-28",
+      ),
     ).toBe(false);
   });
 });

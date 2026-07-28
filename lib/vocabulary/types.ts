@@ -16,6 +16,7 @@ export interface VocabularyItem {
   learned_at: string | null;
   last_reviewed_at: string | null;
   next_review_date: string | null;
+  overdue_stage_decay_pending?: boolean;
   created_at: string;
   updated_at: string;
 }

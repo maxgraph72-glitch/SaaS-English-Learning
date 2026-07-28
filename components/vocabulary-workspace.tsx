@@ -11,6 +11,7 @@ import {
 import { parseVocabularyCsv, type ParsedVocabularyCsv } from "@/lib/vocabulary/csv";
 import {
   STUDY_SESSION_LIMIT,
+  isReviewDue,
   isStudyEligible,
 } from "@/lib/vocabulary/study-session";
 import type { VocabularyGroup, VocabularyItem } from "@/lib/vocabulary/types";
@@ -37,9 +38,11 @@ function formatDueDate(date: string | null) {
 export function VocabularyWorkspace({
   initialItems,
   loadError,
+  today,
 }: {
   initialItems: VocabularyItem[];
   loadError: string;
+  today: string;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -80,6 +83,12 @@ export function VocabularyWorkspace({
   const activeSelectedIdSet = new Set(activeSelectedIds);
   const eligibleSelectedItems = activeSelectedItems.filter(isStudyEligible);
   const studySelectedIds = eligibleSelectedItems
+    .slice(0, STUDY_SESSION_LIMIT)
+    .map((item) => item.id);
+  const reviewSelectedItems = activeSelectedItems.filter((item) =>
+    isReviewDue(item, today),
+  );
+  const reviewSelectedIds = reviewSelectedItems
     .slice(0, STUDY_SESSION_LIMIT)
     .map((item) => item.id);
 
@@ -170,6 +179,13 @@ export function VocabularyWorkspace({
     const search = new URLSearchParams();
     studySelectedIds.forEach((id) => search.append("id", id));
     router.push(`/vocabulary/study?${search.toString()}`);
+  }
+
+  function openReviewSession() {
+    if (reviewSelectedIds.length === 0) return;
+    const search = new URLSearchParams();
+    reviewSelectedIds.forEach((id) => search.append("id", id));
+    router.push(`/review?${search.toString()}`);
   }
 
   function openEditSelected() {
@@ -331,17 +347,33 @@ export function VocabularyWorkspace({
             : "Choose words from your collection."}
         </h2>
         <p className="study-selection-copy">
-          Edit or delete words from any group. Up to 10 selected intake words can also
-          start a focused study session.
+          Start unscheduled words in Study. Words whose review date has arrived open
+          directly in Review.
         </p>
         <div className="selection-actions">
           <button
-            className="primary-button"
+            className={
+              studySelectedIds.length > 0 || reviewSelectedIds.length === 0
+                ? "primary-button"
+                : "secondary-button"
+            }
             type="button"
             disabled={studySelectedIds.length === 0 || pending}
             onClick={openStudySession}
           >
             Study selected ({studySelectedIds.length})
+          </button>
+          <button
+            className={
+              reviewSelectedIds.length > 0 && studySelectedIds.length === 0
+                ? "primary-button"
+                : "secondary-button"
+            }
+            type="button"
+            disabled={reviewSelectedIds.length === 0 || pending}
+            onClick={openReviewSession}
+          >
+            Review selected ({reviewSelectedIds.length})
           </button>
           <button
             className="secondary-button"
@@ -383,6 +415,9 @@ export function VocabularyWorkspace({
           Editing preserves progress and schedule. Deleting also removes review history.
           {eligibleSelectedItems.length > STUDY_SESSION_LIMIT
             ? " Study uses the first 10 eligible selected words."
+            : ""}
+          {reviewSelectedItems.length > STUDY_SESSION_LIMIT
+            ? " Review uses the first 10 due selected words."
             : ""}
         </small>
       </section>
