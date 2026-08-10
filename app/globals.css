@@ -1713,6 +1713,17 @@ input:focus {
   font-size: 15px;
 }
 
+.word-table-row > span:nth-child(2) {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.vocabulary-category {
+  display: block;
+  line-height: 1.35;
+}
+
 .word-table-row small,
 .scheduled-label {
   color: var(--muted);
@@ -1896,6 +1907,11 @@ input:focus {
   gap: 10px;
 }
 
+.review-timer-status {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .card-meta-actions {
   display: flex;
   align-items: center;
@@ -1955,6 +1971,20 @@ kbd {
   font-size: 24px;
 }
 
+.review-result-details {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.revealed-answer .review-result-details span {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .review-outcomes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1962,13 +1992,19 @@ kbd {
   margin-top: 14px;
 }
 
-.review-outcomes button {
+.review-outcomes button,
+.review-outcomes > a {
   display: grid;
   min-height: 72px;
   gap: 4px;
   align-content: center;
+  justify-items: center;
+  padding: 12px;
+  border: 0;
   border-radius: 14px;
   cursor: pointer;
+  text-align: center;
+  text-decoration: none;
 }
 
 .review-outcomes button:disabled {
@@ -1976,7 +2012,8 @@ kbd {
   opacity: 0.42;
 }
 
-.review-outcomes button span {
+.review-outcomes button span,
+.review-outcomes > a span {
   font-size: 11px;
   opacity: 0.72;
 }

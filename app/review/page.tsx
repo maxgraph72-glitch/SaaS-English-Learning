@@ -4,12 +4,14 @@ import { SetupNotice } from "@/components/setup-notice";
 import { calendarDateInTimeZone } from "@/lib/learning/calendar";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireViewer } from "@/lib/supabase/viewer";
-import { selectLearnedTodayPracticeItems } from "@/lib/vocabulary/review-practice";
 import {
   parseStudyItemIds,
   restoreSelectionOrder,
 } from "@/lib/vocabulary/study-session";
-import type { VocabularyItem } from "@/lib/vocabulary/types";
+import {
+  VOCABULARY_ITEM_SELECT,
+  type VocabularyItem,
+} from "@/lib/vocabulary/types";
 
 export const dynamic = "force-dynamic";
 
@@ -22,41 +24,32 @@ export default async function ReviewPage({
   const requestedIds = parseStudyItemIds((await searchParams).id);
   const { supabase, user } = await requireViewer();
   const requestTime = new Date();
-  const recentLearningCutoff = new Date(
-    requestTime.getTime() - 48 * 60 * 60 * 1000,
-  ).toISOString();
-  const [
-    { data: profile },
-    { data: settings },
-    { data: dueItems, error: dueError },
-    { data: recentlyLearnedItems, error: practiceError },
-  ] = await Promise.all([
+  const [{ data: profile }, { data: settings }] = await Promise.all([
     supabase.from("profiles").select("display_name,current_cefr").maybeSingle(),
     supabase.from("user_settings").select("timezone").maybeSingle(),
-    supabase.rpc("get_due_vocabulary"),
-    supabase
-      .from("vocabulary_items")
-      .select(
-        "id,user_id,english_word,translation,source,current_group,repetition_stage,learned_at,last_reviewed_at,next_review_date,created_at,updated_at",
-      )
-      .eq("user_id", user.id)
-      .gte("learned_at", recentLearningCutoff)
-      .order("learned_at", { ascending: true }),
   ]);
   const displayName =
     profile?.display_name?.trim() || user.email?.split("@")[0] || "Learner";
   const timeZone = settings?.timezone ?? "UTC";
   const today = calendarDateInTimeZone(requestTime, timeZone);
+  const { data: dueItems, error: dueError } =
+    await supabase.rpc("get_due_vocabulary");
+  const { data: practiceItems, error: practiceError } = await supabase
+    .from("vocabulary_items")
+    .select(VOCABULARY_ITEM_SELECT)
+    .eq("user_id", user.id)
+    .eq("last_stage_advanced_date", today)
+    .eq("requires_relearning", false)
+    .not("next_review_date", "is", null)
+    .order("last_attempt_at", { ascending: true });
   const allScheduledItems = (dueItems as VocabularyItem[] | null) ?? [];
   const scheduledQueue =
     requestedIds.length > 0
       ? restoreSelectionOrder(requestedIds, allScheduledItems)
       : allScheduledItems;
-  const learnedTodayQueue = selectLearnedTodayPracticeItems(
-    (recentlyLearnedItems as VocabularyItem[] | null) ?? [],
-    today,
-    timeZone,
-    allScheduledItems.map((item) => item.id),
+  const dueIds = new Set(allScheduledItems.map((item) => item.id));
+  const practiceQueue = ((practiceItems as VocabularyItem[] | null) ?? []).filter(
+    (item) => !dueIds.has(item.id),
   );
 
   return (
@@ -67,7 +60,7 @@ export default async function ReviewPage({
     >
       <ReviewSession
         initialQueue={scheduledQueue}
-        learnedTodayQueue={learnedTodayQueue}
+        practiceQueue={practiceQueue}
         loadError={dueError ? "Your review queue could not be loaded." : ""}
         practiceLoadError={
           practiceError ? "Words learned today could not be loaded." : ""

@@ -1,167 +1,192 @@
 import { describe, expect, it } from "vitest";
 import {
   addCalendarDays,
-  calculateReviewOutcome,
-  decayMissedStage,
+  addCalendarMonth,
+  advanceStage,
+  calculateNextReviewDate,
+  calculateOverdueAction,
+  calculateReviewAttempt,
+  classifyResponse,
+  rollbackStage,
   scheduleNewlyLearned,
   type RepetitionStage,
 } from "../lib/learning/spaced-repetition";
 
-describe("spaced repetition scheduling", () => {
-  it("schedules a newly learned word for the next local calendar day", () => {
+describe("knowledge categories", () => {
+  it.each([
+    [0, 1],
+    [1000, 1],
+    [1001, 2],
+    [3000, 2],
+    [3001, 3],
+    [5000, 3],
+    [5001, 4],
+    [60_000, 4],
+  ] as const)("classifies %i ms as category %i", (responseTimeMs, category) => {
+    expect(classifyResponse(responseTimeMs)).toBe(category);
+  });
+
+  it.each([-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects invalid response time %s",
+    (responseTimeMs) => {
+      expect(() => classifyResponse(responseTimeMs)).toThrow(/non-negative integer/);
+    },
+  );
+});
+
+describe("six-stage scheduling", () => {
+  it("starts a newly studied word at stage 1 on the same local date", () => {
     expect(scheduleNewlyLearned("2026-07-13")).toEqual({
-      group: "learning",
+      learningState: "learning",
+      category: null,
       stage: 1,
-      nextReviewDate: "2026-07-14",
+      nextReviewDate: "2026-07-13",
     });
   });
 
   it.each([
-    [2999, "known", 2, "2026-07-15"],
-    [3000, "repeat", 1, "2026-07-14"],
-    [5000, "repeat", 1, "2026-07-14"],
-    [5001, "weak", 1, "2026-07-14"],
-    [10000, "weak", 1, "2026-07-14"],
-    [10001, "learning", 1, "2026-07-14"],
-  ] as const)(
-    "classifies a correct response at %i ms",
-    (responseTimeMs, group, stage, nextReviewDate) => {
-      expect(
-        calculateReviewOutcome({
-          correct: true,
-          responseTimeMs,
-          currentStage: 1,
-          reviewDate: "2026-07-13",
-        }),
-      ).toEqual({ group, stage, nextReviewDate });
-    },
-  );
-
-  it.each([0, 2999, 3000, 10000, 10001])(
-    "lets an incorrect answer override a %i ms response",
-    (responseTimeMs) => {
-      expect(
-        calculateReviewOutcome({
-          correct: false,
-          responseTimeMs,
-          currentStage: 5,
-          reviewDate: "2026-07-13",
-        }),
-      ).toEqual({
-        group: "learning",
-        stage: 1,
-        nextReviewDate: "2026-07-14",
-      });
-    },
-  );
-
-  it("advances through stages 1, 2, 3, 4, and 5", () => {
-    const expected = [
-      [1, 2, "2026-07-15"],
-      [2, 3, "2026-07-16"],
-      [3, 4, "2026-07-20"],
-      [4, 5, "2026-08-12"],
-      [5, 5, "2026-08-12"],
-    ] as const;
-
-    for (const [currentStage, stage, nextReviewDate] of expected) {
-      expect(
-        calculateReviewOutcome({
-          correct: true,
-          responseTimeMs: 2000,
-          currentStage,
-          reviewDate: "2026-07-13",
-        }),
-      ).toEqual({ group: "known", stage, nextReviewDate });
-    }
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 6],
+    [6, 6],
+  ] as const)("advances stage %i to %i", (current, expected) => {
+    expect(advanceStage(current)).toBe(expected);
   });
 
   it.each([
     [1, "2026-07-14"],
-    [2, "2026-07-15"],
-    [3, "2026-07-16"],
-    [4, "2026-07-20"],
-    [5, "2026-08-12"],
-  ] as const)("repeats stage %i at its current interval", (stage, nextReviewDate) => {
-    expect(
-      calculateReviewOutcome({
-        correct: true,
-        responseTimeMs: 4000,
-        currentStage: stage,
-        reviewDate: "2026-07-13",
-      }),
-    ).toEqual({ group: "repeat", stage, nextReviewDate });
-  });
+    [2, "2026-07-16"],
+    [3, "2026-07-20"],
+    [4, "2026-07-27"],
+    [5, "2026-08-13"],
+    [6, "2026-08-13"],
+  ] as const)(
+    "schedules completion of stage %i from the actual attempt date",
+    (completedStage, expected) => {
+      expect(calculateNextReviewDate(completedStage, "2026-07-13")).toBe(expected);
+    },
+  );
 
-  it("resets a weak result to stage 1 and tomorrow", () => {
-    expect(
-      calculateReviewOutcome({
-        correct: true,
-        responseTimeMs: 7000,
-        currentStage: 4,
-        reviewDate: "2026-07-13",
-      }),
-    ).toEqual({ group: "weak", stage: 1, nextReviewDate: "2026-07-14" });
-  });
-
-  it("schedules an overdue review from the actual review date", () => {
-    expect(
-      calculateReviewOutcome({
-        correct: true,
-        responseTimeMs: 2500,
-        currentStage: 3,
-        reviewDate: "2026-08-20",
-      }).nextReviewDate,
-    ).toBe("2026-08-27");
-  });
-
-  it("moves a missed seven-day review back to the three-day stage once", () => {
-    expect(decayMissedStage(4)).toBe(3);
-    expect(
-      calculateReviewOutcome({
-        correct: true,
-        responseTimeMs: 2000,
-        currentStage: 4,
-        reviewDate: "2026-07-28",
-        missedReview: true,
-      }),
-    ).toEqual({
-      group: "repeat",
-      stage: 3,
-      nextReviewDate: "2026-07-31",
-    });
-  });
-
-  it("keeps a missed stage-one review at stage one", () => {
-    expect(decayMissedStage(1)).toBe(1);
+  it.each([
+    ["2026-01-31", "2026-02-28"],
+    ["2024-01-31", "2024-02-29"],
+    ["2026-03-31", "2026-04-30"],
+    ["2026-12-31", "2027-01-31"],
+  ] as const)("adds one clamped calendar month to %s", (date, expected) => {
+    expect(addCalendarMonth(date)).toBe(expected);
   });
 
   it.each([
     ["2026-01-31", 1, "2026-02-01"],
     ["2026-12-31", 1, "2027-01-01"],
     ["2024-02-28", 1, "2024-02-29"],
-    ["2026-01-31", 30, "2026-03-02"],
-  ] as const)("adds calendar days across month and year ends", (date, days, expected) => {
+  ] as const)("adds calendar days across boundaries", (date, days, expected) => {
     expect(addCalendarDays(date, days)).toBe(expected);
   });
 
-  it("rejects invalid response times and stages", () => {
-    expect(() =>
-      calculateReviewOutcome({
-        correct: true,
-        responseTimeMs: -1,
-        currentStage: 1,
-        reviewDate: "2026-07-13",
-      }),
-    ).toThrow(/non-negative/);
+  it("rejects stages outside 1 through 6", () => {
+    expect(() => advanceStage(0 as RepetitionStage)).toThrow(/between 1 and 6/);
+    expect(() => advanceStage(7 as RepetitionStage)).toThrow(/between 1 and 6/);
+  });
+});
 
-    expect(() =>
-      calculateReviewOutcome({
-        correct: true,
-        responseTimeMs: 1000,
-        currentStage: 0 as RepetitionStage,
-        reviewDate: "2026-07-13",
+describe("overdue handling and same-day practice", () => {
+  it.each([
+    ["2026-07-01", "2026-07-01", "none"],
+    ["2026-07-01", "2026-07-02", "rollback"],
+    ["2026-07-01", "2026-07-07", "rollback"],
+    ["2026-07-01", "2026-07-08", "forgotten"],
+    ["2026-07-01", "2026-07-09", "forgotten"],
+  ] as const)("maps due %s and local %s to %s", (due, local, expected) => {
+    expect(calculateOverdueAction(5, due, local)).toBe(expected);
+  });
+
+  it("rolls back exactly one stage with stage 1 as the floor", () => {
+    expect(rollbackStage(5)).toBe(4);
+    expect(rollbackStage(1)).toBe(1);
+  });
+
+  it("advances the rolled-back stage once and schedules from the actual date", () => {
+    expect(
+      calculateReviewAttempt({
+        responseTimeMs: 2500,
+        currentStage: 5,
+        nextReviewDate: "2026-07-12",
+        localDate: "2026-07-13",
       }),
-    ).toThrow(/between 1 and 5/);
+    ).toEqual({
+      category: 2,
+      stage: 5,
+      nextReviewDate: "2026-07-27",
+      attemptKind: "scheduled",
+      overdueAction: "rollback",
+      requiresRelearning: false,
+    });
+  });
+
+  it("does not apply the same rollback twice", () => {
+    expect(
+      calculateReviewAttempt({
+        responseTimeMs: 2500,
+        currentStage: 4,
+        nextReviewDate: "2026-07-12",
+        localDate: "2026-07-13",
+        overdueAlreadyProcessed: true,
+      }),
+    ).toMatchObject({
+      stage: 5,
+      nextReviewDate: "2026-07-27",
+      overdueAction: "rollback",
+    });
+  });
+
+  it("moves a word overdue by seven days into relearning", () => {
+    expect(
+      calculateReviewAttempt({
+        responseTimeMs: 900,
+        currentStage: 6,
+        nextReviewDate: "2026-07-01",
+        localDate: "2026-07-08",
+      }),
+    ).toEqual({
+      category: 4,
+      stage: 1,
+      nextReviewDate: null,
+      attemptKind: "scheduled",
+      overdueAction: "forgotten",
+      requiresRelearning: true,
+    });
+  });
+
+  it("keeps stage and date on unlimited same-day practice while updating category", () => {
+    expect(
+      calculateReviewAttempt({
+        responseTimeMs: 5001,
+        currentStage: 4,
+        nextReviewDate: "2026-07-20",
+        localDate: "2026-07-13",
+        lastStageAdvancedDate: "2026-07-13",
+      }),
+    ).toEqual({
+      category: 4,
+      stage: 4,
+      nextReviewDate: "2026-07-20",
+      attemptKind: "practice",
+      overdueAction: "none",
+      requiresRelearning: false,
+    });
+  });
+
+  it("rejects a future scheduled attempt that is not same-day practice", () => {
+    expect(() =>
+      calculateReviewAttempt({
+        responseTimeMs: 1000,
+        currentStage: 3,
+        nextReviewDate: "2026-07-14",
+        localDate: "2026-07-13",
+      }),
+    ).toThrow(/not due yet/);
   });
 });

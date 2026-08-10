@@ -12,18 +12,48 @@ import { parseVocabularyCsv, type ParsedVocabularyCsv } from "@/lib/vocabulary/c
 import {
   STUDY_SESSION_LIMIT,
   isReviewDue,
+  isSameDayPracticeAvailable,
   isStudyEligible,
 } from "@/lib/vocabulary/study-session";
-import type { VocabularyGroup, VocabularyItem } from "@/lib/vocabulary/types";
+import type {
+  KnowledgeCategory,
+  VocabularyItem,
+} from "@/lib/vocabulary/types";
 
-const filters: Array<"all" | VocabularyGroup> = [
+type QueueFilter =
+  | "all"
+  | "new"
+  | "learning"
+  | "due"
+  | "practice"
+  | "scheduled"
+  | "relearn";
+
+const filters: QueueFilter[] = [
   "all",
-  "unknown",
+  "new",
   "learning",
-  "weak",
-  "repeat",
-  "known",
+  "due",
+  "practice",
+  "scheduled",
+  "relearn",
 ];
+
+const queueLabels: Record<Exclude<QueueFilter, "all">, string> = {
+  new: "New",
+  learning: "Learning now",
+  due: "Review today",
+  practice: "Repeat today",
+  scheduled: "Scheduled",
+  relearn: "Relearn",
+};
+
+const categoryLabels: Record<KnowledgeCategory, string> = {
+  1: "Known",
+  2: "Satisfactory",
+  3: "Weak",
+  4: "Unknown",
+};
 
 function formatDueDate(date: string | null) {
   if (!date) return "Not scheduled";
@@ -33,6 +63,15 @@ function formatDueDate(date: string | null) {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${date}T00:00:00Z`));
+}
+
+function getQueueFilter(item: VocabularyItem, today: string): Exclude<QueueFilter, "all"> {
+  if (item.requires_relearning) return "relearn";
+  if (item.learning_state === "new") return "new";
+  if (isReviewDue(item, today)) return "due";
+  if (isSameDayPracticeAvailable(item, today)) return "practice";
+  if (item.learning_state === "learning") return "learning";
+  return "scheduled";
 }
 
 export function VocabularyWorkspace({
@@ -46,7 +85,7 @@ export function VocabularyWorkspace({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<(typeof filters)[number]>("all");
+  const [filter, setFilter] = useState<QueueFilter>("all");
   const [message, setMessage] = useState(loadError);
   const [pending, setPending] = useState(false);
   const [csv, setCsv] = useState<ParsedVocabularyCsv | null>(null);
@@ -66,10 +105,10 @@ export function VocabularyWorkspace({
     >;
     result.all = initialItems.length;
     initialItems.forEach((item) => {
-      result[item.current_group] += 1;
+      result[getQueueFilter(item, today)] += 1;
     });
     return result;
-  }, [initialItems]);
+  }, [initialItems, today]);
 
   const itemsById = useMemo(
     () => new Map(initialItems.map((item) => [item.id, item])),
@@ -95,14 +134,15 @@ export function VocabularyWorkspace({
   const visibleItems = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("en");
     return initialItems.filter((item) => {
-      const matchesFilter = filter === "all" || item.current_group === filter;
+      const matchesFilter =
+        filter === "all" || getQueueFilter(item, today) === filter;
       const matchesQuery =
         !normalizedQuery ||
         item.english_word.toLocaleLowerCase("en").includes(normalizedQuery) ||
         item.translation.toLocaleLowerCase().includes(normalizedQuery);
       return matchesFilter && matchesQuery;
     });
-  }, [filter, initialItems, query]);
+  }, [filter, initialItems, query, today]);
 
   async function addWord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -347,8 +387,8 @@ export function VocabularyWorkspace({
             : "Choose words from your collection."}
         </h2>
         <p className="study-selection-copy">
-          Start unscheduled words in Study. Words whose review date has arrived open
-          directly in Review.
+          New and forgotten words open in Study. Due words open directly in
+          Review, while same-day practice never advances the stage twice.
         </p>
         <div className="selection-actions">
           <button
@@ -426,7 +466,7 @@ export function VocabularyWorkspace({
         <div className="collection-topbar">
           <div>
             <p className="eyebrow">Your collection</p>
-            <h2 id="collection-heading">Words and review state</h2>
+            <h2 id="collection-heading">Words, knowledge and review state</h2>
           </div>
           <label className="search-field">
             <span className="sr-only">Search vocabulary</span>
@@ -438,7 +478,7 @@ export function VocabularyWorkspace({
             />
           </label>
         </div>
-        <div className="filter-tabs" role="group" aria-label="Filter by vocabulary group">
+        <div className="filter-tabs" role="group" aria-label="Filter by vocabulary queue">
           {filters.map((name) => (
             <button
               className={filter === name ? "active" : ""}
@@ -446,7 +486,7 @@ export function VocabularyWorkspace({
               onClick={() => setFilter(name)}
               key={name}
             >
-              {name}
+              {name === "all" ? "All" : queueLabels[name]}
               <span>{counts[name]}</span>
             </button>
           ))}
@@ -454,13 +494,14 @@ export function VocabularyWorkspace({
         <div className="word-table" role="table" aria-label="Vocabulary items">
           <div className="word-table-head" role="row">
             <span>Word</span>
-            <span>Group</span>
+            <span>Status · category</span>
             <span>Stage</span>
             <span>Next review</span>
             <span>Select</span>
           </div>
           {visibleItems.map((item) => {
             const selected = activeSelectedIdSet.has(item.id);
+            const queue = getQueueFilter(item, today);
 
             return (
               <div
@@ -474,10 +515,21 @@ export function VocabularyWorkspace({
                 </div>
                 <span>
                   <span className={`group-badge ${item.current_group}`}>
-                    {item.current_group}
+                    {queueLabels[queue]}
                   </span>
+                  <small className="vocabulary-category">
+                    {item.knowledge_category
+                      ? `Category ${item.knowledge_category}: ${
+                          categoryLabels[item.knowledge_category]
+                        }`
+                      : "Category not measured"}
+                  </small>
                 </span>
-                <span>{item.repetition_stage === 0 ? "—" : `${item.repetition_stage} / 5`}</span>
+                <span>
+                  {item.repetition_stage === 0
+                    ? "—"
+                    : `${item.repetition_stage} / 6`}
+                </span>
                 <span>{formatDueDate(item.next_review_date)}</span>
                 <span>
                   <label className="selection-control">

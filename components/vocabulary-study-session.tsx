@@ -38,7 +38,7 @@ export function VocabularyStudySession({
   const [revealed, setRevealed] = useState(false);
   const [pending, setPending] = useState(false);
   const [startStatus, setStartStatus] = useState<StartStatus>(
-    initialQueue[0]?.current_group === "unknown" ? "starting" : "ready",
+    initialQueue[0]?.learning_state === "new" ? "starting" : "ready",
   );
   const [message, setMessage] = useState(loadError);
   const [againAttempts, setAgainAttempts] = useState(0);
@@ -78,7 +78,14 @@ export function VocabularyStudySession({
 
     setQueue((existing) =>
       existing.map((item) =>
-        item.id === itemId ? { ...item, current_group: "learning" } : item,
+        item.id === itemId
+          ? {
+              ...item,
+              current_group: "learning",
+              learning_state: "learning",
+              repetition_stage: 1,
+            }
+          : item,
       ),
     );
     setStartStatus("ready");
@@ -88,7 +95,7 @@ export function VocabularyStudySession({
   useEffect(() => {
     if (!current) return;
     const frame = window.requestAnimationFrame(() => {
-      if (current.current_group === "unknown") void startWord(current.id);
+      if (current.learning_state === "new") void startWord(current.id);
       cardHeading.current?.focus({ preventScroll: true });
     });
     return () => window.cancelAnimationFrame(frame);
@@ -109,7 +116,7 @@ export function VocabularyStudySession({
     setAgainAttempts((count) => count + 1);
     setRevealed(false);
     setMessage("");
-    setStartStatus(next?.current_group === "unknown" ? "starting" : "ready");
+    setStartStatus(next?.learning_state === "new" ? "starting" : "ready");
     setAnnouncement(`${current.english_word} moved to the end of this session.`);
 
     if (next?.id === current.id) {
@@ -146,8 +153,8 @@ export function VocabularyStudySession({
     const next = nextQueue[0];
     setQueue(nextQueue);
     setRevealed(false);
-    setStartStatus(next?.current_group === "unknown" ? "starting" : "ready");
-    setAnnouncement(`${current.english_word} learned. Its first review is tomorrow.`);
+    setStartStatus(next?.learning_state === "new" ? "starting" : "ready");
+    setAnnouncement(`${current.english_word} learned. Stage 1 is ready today.`);
   }, [current, pending, queue, revealed, startStatus]);
 
   useEffect(() => {
@@ -222,15 +229,15 @@ export function VocabularyStudySession({
           <p className="eyebrow">Study complete</p>
           <h1>You learned {total} {total === 1 ? "word" : "words"}.</h1>
           <p>
-            Your first {total === 1 ? "review is" : "reviews are"} scheduled for tomorrow.
-            You used Again {againAttempts} {againAttempts === 1 ? "time" : "times"}.
+            Stage 1 {total === 1 ? "is" : "reviews are"} ready today. You used
+            Again {againAttempts} {againAttempts === 1 ? "time" : "times"}.
           </p>
           <div className="completion-actions">
-            <Link className="primary-button compact" href="/vocabulary">
-              Back to vocabulary
+            <Link className="primary-button compact" href="/review">
+              Start stage 1 review
             </Link>
-            <Link className="secondary-button" href="/dashboard">
-              Back to today
+            <Link className="secondary-button" href="/vocabulary">
+              Back to vocabulary
             </Link>
           </div>
         </section>
@@ -266,9 +273,11 @@ export function VocabularyStudySession({
         </div>
         <article className={revealed ? "review-card revealed" : "review-card"}>
           <div className="card-meta">
-            <span>New word</span>
+            <span>
+              {current.requires_relearning ? "Relearn word" : "Stage 1 study"}
+            </span>
             <span className={`group-badge ${current.current_group}`}>
-              {current.current_group}
+              {current.requires_relearning ? "Needs relearning" : "Not tested"}
             </span>
           </div>
           <p className="eyebrow">English word</p>
@@ -324,7 +333,7 @@ export function VocabularyStudySession({
           >
             <strong>{pending ? "Saving…" : "Learned"}</strong>
             <span>
-              Review tomorrow <kbd>2</kbd>
+              Check today <kbd>2</kbd>
             </span>
           </button>
         </div>
@@ -335,7 +344,8 @@ export function VocabularyStudySession({
         ) : null}
         <div className="study-session-footer">
           <p className="review-note">
-            Again keeps the word in this session. Learned starts its repetition schedule.
+            Again keeps the word in this session. Learned makes stage 1 ready
+            for a timed check today.
           </p>
           <Link className="table-action" href="/vocabulary">
             Back to vocabulary

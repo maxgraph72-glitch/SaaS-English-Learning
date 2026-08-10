@@ -4,10 +4,14 @@ import { VocabularyStudySession } from "@/components/vocabulary-study-session";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireViewer } from "@/lib/supabase/viewer";
 import {
+  isStudyEligible,
   parseStudyItemIds,
   restoreSelectionOrder,
 } from "@/lib/vocabulary/study-session";
-import type { VocabularyItem } from "@/lib/vocabulary/types";
+import {
+  VOCABULARY_ITEM_SELECT,
+  type VocabularyItem,
+} from "@/lib/vocabulary/types";
 
 export const dynamic = "force-dynamic";
 
@@ -30,19 +34,17 @@ export default async function VocabularyStudyPage({
   if (requestedIds.length > 0) {
     const { data, error } = await supabase
       .from("vocabulary_items")
-      .select(
-        "id,user_id,english_word,translation,source,current_group,repetition_stage,learned_at,last_reviewed_at,next_review_date,created_at,updated_at",
-      )
+      .select(VOCABULARY_ITEM_SELECT)
       .eq("user_id", user.id)
-      .in("id", requestedIds)
-      .in("current_group", ["unknown", "learning"])
-      .eq("repetition_stage", 0)
-      .is("next_review_date", null);
+      .in("id", requestedIds);
 
     if (error) {
       loadError = "Your selected words could not be loaded.";
     } else {
-      items = restoreSelectionOrder(requestedIds, (data as VocabularyItem[] | null) ?? []);
+      items = restoreSelectionOrder(
+        requestedIds,
+        ((data as VocabularyItem[] | null) ?? []).filter(isStudyEligible),
+      );
     }
   }
 

@@ -16,6 +16,8 @@ insert into public.vocabulary_items (
   english_word,
   translation,
   current_group,
+  learning_state,
+  knowledge_category,
   repetition_stage,
   learned_at,
   last_reviewed_at,
@@ -28,6 +30,8 @@ values
     'original',
     'first translation',
     'known',
+    'scheduled',
+    1,
     5,
     '2026-07-01 10:00:00+00',
     '2026-07-10 10:00:00+00',
@@ -39,6 +43,8 @@ values
     'private',
     'second translation',
     'known',
+    'scheduled',
+    1,
     5,
     '2026-07-01 10:00:00+00',
     '2026-07-10 10:00:00+00',
@@ -51,13 +57,21 @@ insert into public.vocabulary_reviews (
   user_id,
   vocabulary_item_id,
   reviewed_at,
+  local_review_date,
   correct,
   response_time_ms,
   group_before,
   group_after,
+  category_before,
+  category_after,
   stage_before,
   stage_after,
-  next_review_date
+  next_review_date,
+  next_review_date_before,
+  next_review_date_after,
+  attempt_kind,
+  overdue_action,
+  scheduled_review_date
 )
 values (
   'ffffffff-ffff-4fff-8fff-ffffffffffff',
@@ -65,13 +79,21 @@ values (
   '33333333-3333-4333-8333-333333333333',
   'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
   '2026-07-10 10:00:00+00',
+  '2026-07-10',
   true,
   2000,
   'known',
   'known',
+  1,
+  1,
   4,
   5,
-  '2026-07-20'
+  '2026-07-20',
+  '2026-07-10',
+  '2026-07-20',
+  'scheduled',
+  'none',
+  '2026-07-10'
 );
 
 set local role authenticated;
