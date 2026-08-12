@@ -1,54 +1,45 @@
 import { describe, expect, it } from "vitest";
-import { selectSameDayPracticeItems } from "../lib/vocabulary/review-practice";
+import { selectLearnedTodayPracticeItems } from "../lib/vocabulary/review-practice";
 
 describe("same-day vocabulary practice", () => {
-  it("uses the server-saved local advancement date", () => {
+  it("uses the learner's local calendar date", () => {
     const items = [
       {
         id: "today",
-        last_stage_advanced_date: "2026-07-15",
-        next_review_date: "2026-07-16",
-        requires_relearning: false,
+        learned_at: "2026-07-14T18:30:00.000Z",
       },
       {
         id: "yesterday",
-        last_stage_advanced_date: "2026-07-14",
-        next_review_date: "2026-07-17",
-        requires_relearning: false,
+        learned_at: "2026-07-14T16:30:00.000Z",
       },
       {
-        id: "forgotten",
-        last_stage_advanced_date: "2026-07-15",
-        next_review_date: null,
-        requires_relearning: true,
+        id: "not-learned",
+        learned_at: null,
       },
     ];
 
     expect(
-      selectSameDayPracticeItems(items, "2026-07-15").map((item) => item.id),
+      selectLearnedTodayPracticeItems(
+        items,
+        "2026-07-15",
+        "Asia/Krasnoyarsk",
+      ).map((item) => item.id),
     ).toEqual(["today"]);
   });
 
-  it("keeps currently due cards out of a separate practice queue", () => {
+  it("keeps scheduled cards out of the optional practice queue", () => {
     const items = [
-      {
-        id: "scheduled",
-        last_stage_advanced_date: "2026-07-15",
-        next_review_date: "2026-07-16",
-        requires_relearning: false,
-      },
-      {
-        id: "practice",
-        last_stage_advanced_date: "2026-07-15",
-        next_review_date: "2026-07-18",
-        requires_relearning: false,
-      },
+      { id: "scheduled", learned_at: "2026-07-15T06:00:00.000Z" },
+      { id: "practice", learned_at: "2026-07-15T07:00:00.000Z" },
     ];
 
     expect(
-      selectSameDayPracticeItems(items, "2026-07-15", ["scheduled"]).map(
-        (item) => item.id,
-      ),
+      selectLearnedTodayPracticeItems(
+        items,
+        "2026-07-15",
+        "UTC",
+        ["scheduled"],
+      ).map((item) => item.id),
     ).toEqual(["practice"]);
   });
 });

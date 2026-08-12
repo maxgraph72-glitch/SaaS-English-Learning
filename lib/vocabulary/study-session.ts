@@ -5,9 +5,9 @@ export const STUDY_SESSION_LIMIT = 10;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export type CardPhase = "front" | "revealed" | "result";
+export type CardPhase = "front" | "revealed";
 export type StudyShortcut = "reveal" | "again" | "learned";
-export type ReviewShortcut = "submit" | "repeat" | "continue" | "later";
+export type ReviewShortcut = "reveal" | "incorrect" | "correct" | "later";
 
 export interface ShortcutInput {
   key: string;
@@ -46,16 +46,10 @@ export function resolveStudyShortcut(input: ShortcutInput): StudyShortcut | null
 export function resolveReviewShortcut(input: ShortcutInput): ReviewShortcut | null {
   if (isShortcutBlocked(input)) return null;
 
-  if (
-    input.phase === "front" &&
-    input.key.toLocaleLowerCase("en") === "s" &&
-    input.canRotate
-  ) {
-    return "later";
-  }
-  if (input.phase === "front" && input.key === " ") return "submit";
-  if (input.phase === "result" && input.key === "1") return "repeat";
-  if (input.phase === "result" && input.key === "2") return "continue";
+  if (input.key.toLocaleLowerCase("en") === "s" && input.canRotate) return "later";
+  if (input.phase === "front" && input.key === " ") return "reveal";
+  if (input.phase === "revealed" && input.key === "1") return "incorrect";
+  if (input.phase === "revealed" && input.key === "2") return "correct";
   return null;
 }
 
@@ -83,46 +77,24 @@ export function parseStudyItemIds(
 export function isStudyEligible(
   item: Pick<
     VocabularyItem,
-    | "learning_state"
-    | "knowledge_category"
-    | "repetition_stage"
-    | "requires_relearning"
+    "current_group" | "repetition_stage" | "next_review_date"
   >,
 ) {
   return (
-    item.learning_state === "new" ||
-    (item.learning_state === "learning" &&
-      item.repetition_stage === 1 &&
-      (item.knowledge_category === null || item.requires_relearning))
+    item.repetition_stage === 0 &&
+    item.next_review_date === null &&
+    (item.current_group === "unknown" || item.current_group === "learning")
   );
 }
 
 export function isReviewDue(
-  item: Pick<
-    VocabularyItem,
-    "repetition_stage" | "next_review_date" | "requires_relearning"
-  >,
+  item: Pick<VocabularyItem, "repetition_stage" | "next_review_date">,
   today: string,
 ) {
   return (
     item.repetition_stage >= 1 &&
     item.next_review_date !== null &&
-    item.next_review_date <= today &&
-    !item.requires_relearning
-  );
-}
-
-export function isSameDayPracticeAvailable(
-  item: Pick<
-    VocabularyItem,
-    "last_stage_advanced_date" | "next_review_date" | "requires_relearning"
-  >,
-  today: string,
-) {
-  return (
-    item.last_stage_advanced_date === today &&
-    item.next_review_date !== null &&
-    !item.requires_relearning
+    item.next_review_date <= today
   );
 }
 

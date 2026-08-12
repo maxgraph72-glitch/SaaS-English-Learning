@@ -4,7 +4,6 @@ import {
   completeCurrentAfterConfirmation,
   getQueueProgress,
   isReviewDue,
-  isSameDayPracticeAvailable,
   isStudyEligible,
   parseStudyItemIds,
   resolveReviewShortcut,
@@ -56,29 +55,26 @@ describe("vocabulary study selection", () => {
     ]);
   });
 
-  it("allows new and relearning words into study", () => {
+  it("allows only unscheduled stage-zero intake and learning words", () => {
     expect(
       isStudyEligible({
-        learning_state: "new",
-        knowledge_category: null,
+        current_group: "unknown",
         repetition_stage: 0,
-        requires_relearning: false,
+        next_review_date: null,
       }),
     ).toBe(true);
     expect(
       isStudyEligible({
-        learning_state: "learning",
-        knowledge_category: 4,
+        current_group: "learning",
+        repetition_stage: 0,
+        next_review_date: null,
+      }),
+    ).toBe(true);
+    expect(
+      isStudyEligible({
+        current_group: "learning",
         repetition_stage: 1,
-        requires_relearning: true,
-      }),
-    ).toBe(true);
-    expect(
-      isStudyEligible({
-        learning_state: "scheduled",
-        knowledge_category: 2,
-        repetition_stage: 2,
-        requires_relearning: false,
+        next_review_date: "2026-07-15",
       }),
     ).toBe(false);
   });
@@ -86,64 +82,25 @@ describe("vocabulary study selection", () => {
   it("routes only scheduled words whose review date has arrived to Review", () => {
     expect(
       isReviewDue(
-        {
-          repetition_stage: 1,
-          next_review_date: "2026-07-28",
-          requires_relearning: false,
-        },
+        { repetition_stage: 1, next_review_date: "2026-07-28" },
         "2026-07-28",
       ),
     ).toBe(true);
     expect(
       isReviewDue(
-        {
-          repetition_stage: 3,
-          next_review_date: "2026-07-27",
-          requires_relearning: false,
-        },
+        { repetition_stage: 3, next_review_date: "2026-07-27" },
         "2026-07-28",
       ),
     ).toBe(true);
     expect(
       isReviewDue(
-        {
-          repetition_stage: 1,
-          next_review_date: "2026-07-29",
-          requires_relearning: false,
-        },
+        { repetition_stage: 1, next_review_date: "2026-07-29" },
         "2026-07-28",
       ),
     ).toBe(false);
     expect(
       isReviewDue(
-        {
-          repetition_stage: 0,
-          next_review_date: null,
-          requires_relearning: false,
-        },
-        "2026-07-28",
-      ),
-    ).toBe(false);
-  });
-
-  it("recognizes only words advanced on the current local date as practice", () => {
-    expect(
-      isSameDayPracticeAvailable(
-        {
-          last_stage_advanced_date: "2026-07-28",
-          next_review_date: "2026-08-04",
-          requires_relearning: false,
-        },
-        "2026-07-28",
-      ),
-    ).toBe(true);
-    expect(
-      isSameDayPracticeAvailable(
-        {
-          last_stage_advanced_date: "2026-07-27",
-          next_review_date: "2026-08-04",
-          requires_relearning: false,
-        },
+        { repetition_stage: 0, next_review_date: null },
         "2026-07-28",
       ),
     ).toBe(false);
@@ -198,13 +155,13 @@ describe("card shortcuts", () => {
   });
 
   it("maps review shortcuts and requires a rotatable queue for Later", () => {
-    expect(resolveReviewShortcut(shortcutDefaults)).toBe("submit");
+    expect(resolveReviewShortcut(shortcutDefaults)).toBe("reveal");
     expect(
-      resolveReviewShortcut({ ...shortcutDefaults, phase: "result", key: "1" }),
-    ).toBe("repeat");
+      resolveReviewShortcut({ ...shortcutDefaults, phase: "revealed", key: "1" }),
+    ).toBe("incorrect");
     expect(
-      resolveReviewShortcut({ ...shortcutDefaults, phase: "result", key: "2" }),
-    ).toBe("continue");
+      resolveReviewShortcut({ ...shortcutDefaults, phase: "revealed", key: "2" }),
+    ).toBe("correct");
     expect(resolveReviewShortcut({ ...shortcutDefaults, key: "s", canRotate: true })).toBe(
       "later",
     );

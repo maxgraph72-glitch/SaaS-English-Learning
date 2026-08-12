@@ -1,29 +1,31 @@
-export type KnowledgeCategory = 1 | 2 | 3 | 4;
-export type RepetitionStage = 1 | 2 | 3 | 4 | 5 | 6;
-export type OverdueAction = "none" | "rollback" | "forgotten";
-export type ReviewAttemptKind = "scheduled" | "practice";
+export const STAGE_INTERVAL_DAYS = {
+  1: 1,
+  2: 2,
+  3: 3,
+  4: 7,
+  5: 30,
+} as const;
 
-export interface ReviewAttemptInput {
+export type RepetitionStage = 1 | 2 | 3 | 4 | 5;
+export type ReviewGroup = "learning" | "weak" | "repeat" | "known";
+
+export interface ReviewInput {
+  correct: boolean;
   responseTimeMs: number;
   currentStage: RepetitionStage;
-  nextReviewDate: string;
-  localDate: string;
-  lastStageAdvancedDate?: string | null;
-  overdueAlreadyProcessed?: boolean;
+  reviewDate: string;
+  missedReview?: boolean;
 }
 
-export interface ReviewAttemptOutcome {
-  category: KnowledgeCategory;
+export interface ReviewOutcome {
+  group: ReviewGroup;
   stage: RepetitionStage;
-  nextReviewDate: string | null;
-  attemptKind: ReviewAttemptKind;
-  overdueAction: OverdueAction;
-  requiresRelearning: boolean;
+  nextReviewDate: string;
 }
 
 const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-function parseCalendarDate(calendarDate: string): Date {
+export function addCalendarDays(calendarDate: string, days: number): string {
   const match = CALENDAR_DATE.exec(calendarDate);
   if (!match) throw new Error("Expected a calendar date in YYYY-MM-DD format.");
 
@@ -37,155 +39,61 @@ function parseCalendarDate(calendarDate: string): Date {
     throw new Error("Invalid calendar date.");
   }
 
-  return date;
-}
-
-function formatCalendarDate(date: Date): string {
+  date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
 
-function assertStage(stage: number): asserts stage is RepetitionStage {
-  if (!Number.isInteger(stage) || stage < 1 || stage > 6) {
-    throw new Error("Repetition stage must be between 1 and 6.");
-  }
-}
-
-export function addCalendarDays(calendarDate: string, days: number): string {
-  if (!Number.isInteger(days)) throw new Error("Calendar days must be an integer.");
-  const date = parseCalendarDate(calendarDate);
-  date.setUTCDate(date.getUTCDate() + days);
-  return formatCalendarDate(date);
-}
-
-export function addCalendarMonth(calendarDate: string): string {
-  const date = parseCalendarDate(calendarDate);
-  const originalDay = date.getUTCDate();
-  const targetYear =
-    date.getUTCFullYear() + (date.getUTCMonth() === 11 ? 1 : 0);
-  const targetMonth = (date.getUTCMonth() + 1) % 12;
-  const lastTargetDay = new Date(
-    Date.UTC(targetYear, targetMonth + 1, 0),
-  ).getUTCDate();
-
-  return formatCalendarDate(
-    new Date(Date.UTC(targetYear, targetMonth, Math.min(originalDay, lastTargetDay))),
-  );
-}
-
-export function classifyResponse(responseTimeMs: number): KnowledgeCategory {
-  if (
-    !Number.isFinite(responseTimeMs) ||
-    !Number.isInteger(responseTimeMs) ||
-    responseTimeMs < 0
-  ) {
-    throw new Error("Response time must be a non-negative integer.");
-  }
-
-  if (responseTimeMs <= 1000) return 1;
-  if (responseTimeMs <= 3000) return 2;
-  if (responseTimeMs <= 5000) return 3;
-  return 4;
-}
-
-export function advanceStage(currentStage: RepetitionStage): RepetitionStage {
-  assertStage(currentStage);
-  return Math.min(currentStage + 1, 6) as RepetitionStage;
-}
-
-export function calculateNextReviewDate(
-  completedStage: RepetitionStage,
-  localDate: string,
-): string {
-  assertStage(completedStage);
-  parseCalendarDate(localDate);
-
-  if (completedStage === 1) return addCalendarDays(localDate, 1);
-  if (completedStage === 2) return addCalendarDays(localDate, 3);
-  if (completedStage === 3) return addCalendarDays(localDate, 7);
-  if (completedStage === 4) return addCalendarDays(localDate, 14);
-  return addCalendarMonth(localDate);
-}
-
-export function calculateOverdueAction(
-  stage: RepetitionStage,
-  dueDate: string,
-  localDate: string,
-): OverdueAction {
-  assertStage(stage);
-  const due = parseCalendarDate(dueDate);
-  const local = parseCalendarDate(localDate);
-  const overdueDays = Math.floor((local.getTime() - due.getTime()) / 86_400_000);
-
-  if (overdueDays < 1) return "none";
-  if (overdueDays < 7) return "rollback";
-  return "forgotten";
-}
-
-export function rollbackStage(currentStage: RepetitionStage): RepetitionStage {
-  assertStage(currentStage);
-  return Math.max(currentStage - 1, 1) as RepetitionStage;
-}
-
-export function scheduleNewlyLearned(localDate: string) {
-  parseCalendarDate(localDate);
+export function scheduleNewlyLearned(learnedDate: string): ReviewOutcome {
   return {
-    learningState: "learning" as const,
-    category: null,
-    stage: 1 as const,
-    nextReviewDate: localDate,
+    group: "learning",
+    stage: 1,
+    nextReviewDate: addCalendarDays(learnedDate, 1),
   };
 }
 
-export function calculateReviewAttempt(
-  input: ReviewAttemptInput,
-): ReviewAttemptOutcome {
-  assertStage(input.currentStage);
-  const category = classifyResponse(input.responseTimeMs);
-  parseCalendarDate(input.nextReviewDate);
-  parseCalendarDate(input.localDate);
+export function decayMissedStage(currentStage: RepetitionStage): RepetitionStage {
+  if (!(currentStage in STAGE_INTERVAL_DAYS)) {
+    throw new Error("Repetition stage must be between 1 and 5.");
+  }
+  return Math.max(currentStage - 1, 1) as RepetitionStage;
+}
 
-  if (input.lastStageAdvancedDate === input.localDate) {
-    return {
-      category,
-      stage: input.currentStage,
-      nextReviewDate: input.nextReviewDate,
-      attemptKind: "practice",
-      overdueAction: "none",
-      requiresRelearning: false,
-    };
+export function calculateReviewOutcome(input: ReviewInput): ReviewOutcome {
+  if (!Number.isInteger(input.responseTimeMs) || input.responseTimeMs < 0) {
+    throw new Error("Response time must be a non-negative integer.");
+  }
+  if (!(input.currentStage in STAGE_INTERVAL_DAYS)) {
+    throw new Error("Repetition stage must be between 1 and 5.");
   }
 
-  if (input.nextReviewDate > input.localDate) {
-    throw new Error("Vocabulary item is not due yet.");
-  }
+  let group: ReviewGroup;
+  let stage: RepetitionStage;
+  const effectiveStage = input.missedReview
+    ? decayMissedStage(input.currentStage)
+    : input.currentStage;
 
-  const overdueAction = calculateOverdueAction(
-    input.currentStage,
-    input.nextReviewDate,
-    input.localDate,
-  );
-  if (overdueAction === "forgotten") {
-    return {
-      category: 4,
-      stage: 1,
-      nextReviewDate: null,
-      attemptKind: "scheduled",
-      overdueAction,
-      requiresRelearning: true,
-    };
+  if (!input.correct) {
+    group = "learning";
+    stage = 1;
+  } else if (input.responseTimeMs < 3000) {
+    group = input.missedReview ? "repeat" : "known";
+    stage = input.missedReview
+      ? effectiveStage
+      : (Math.min(effectiveStage + 1, 5) as RepetitionStage);
+  } else if (input.responseTimeMs <= 5000) {
+    group = "repeat";
+    stage = effectiveStage;
+  } else if (input.responseTimeMs <= 10000) {
+    group = "weak";
+    stage = 1;
+  } else {
+    group = "learning";
+    stage = 1;
   }
-
-  const completedStage =
-    overdueAction === "rollback" && !input.overdueAlreadyProcessed
-      ? rollbackStage(input.currentStage)
-      : input.currentStage;
 
   return {
-    category,
-    stage: advanceStage(completedStage),
-    nextReviewDate: calculateNextReviewDate(completedStage, input.localDate),
-    attemptKind: "scheduled",
-    overdueAction,
-    requiresRelearning: false,
+    group,
+    stage,
+    nextReviewDate: addCalendarDays(input.reviewDate, STAGE_INTERVAL_DAYS[stage]),
   };
 }

@@ -3,10 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { isValidTimeZone } from "@/lib/learning/calendar";
 import { requireViewer } from "@/lib/supabase/viewer";
-import type {
-  DailyBlockStatus,
-  VocabularyReviewOutcome,
-} from "@/lib/vocabulary/types";
+import type { DailyBlockStatus } from "@/lib/vocabulary/types";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -182,14 +179,14 @@ export async function deleteVocabularyItemsAction(itemIds: string[]) {
 
 export async function startVocabularyLearningAction(itemId: string) {
   const { supabase } = await requireViewer();
-  const { data, error } = await supabase.rpc("start_vocabulary_learning", {
+  const { error } = await supabase.rpc("start_vocabulary_learning", {
     p_item_id: itemId,
   });
   if (error) return { ok: false as const, message: "This word could not be opened." };
 
   revalidatePath("/vocabulary");
   revalidatePath("/");
-  return { ok: true as const, item: data };
+  return { ok: true as const };
 }
 
 export async function markVocabularyLearnedAction(
@@ -211,28 +208,15 @@ export async function markVocabularyLearnedAction(
 
 export async function submitVocabularyReviewAction(input: {
   itemId: string;
+  correct: boolean;
   responseTimeMs: number;
   submissionId: string;
 }) {
-  if (
-    !input ||
-    typeof input.itemId !== "string" ||
-    typeof input.submissionId !== "string" ||
-    !UUID_PATTERN.test(input.itemId) ||
-    !UUID_PATTERN.test(input.submissionId) ||
-    !Number.isFinite(input.responseTimeMs) ||
-    input.responseTimeMs < 0
-  ) {
-    return {
-      ok: false as const,
-      message: "The measured review time is invalid.",
-    };
-  }
-
-  const responseTimeMs = Math.round(input.responseTimeMs);
+  const responseTimeMs = Math.max(0, Math.round(input.responseTimeMs));
   const { supabase } = await requireViewer();
-  const { data, error } = await supabase.rpc("submit_vocabulary_review_v2", {
+  const { data, error } = await supabase.rpc("submit_vocabulary_review", {
     p_item_id: input.itemId,
+    p_correct: input.correct,
     p_response_time_ms: responseTimeMs,
     p_submission_id: input.submissionId,
   });
@@ -242,10 +226,7 @@ export async function submitVocabularyReviewAction(input: {
   revalidatePath("/vocabulary");
   revalidatePath("/review");
   revalidatePath("/");
-  return {
-    ok: true as const,
-    outcome: (data?.[0] as VocabularyReviewOutcome | undefined) ?? null,
-  };
+  return { ok: true as const, outcome: data?.[0] ?? null };
 }
 
 export async function setDailyBlockStatusAction(
