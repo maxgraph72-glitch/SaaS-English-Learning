@@ -87,17 +87,6 @@ export function isStudyEligible(
   );
 }
 
-export function isReviewDue(
-  item: Pick<VocabularyItem, "repetition_stage" | "next_review_date">,
-  today: string,
-) {
-  return (
-    item.repetition_stage >= 1 &&
-    item.next_review_date !== null &&
-    item.next_review_date <= today
-  );
-}
-
 export function restoreSelectionOrder<T extends { id: string }>(
   selectedIds: readonly string[],
   items: readonly T[],

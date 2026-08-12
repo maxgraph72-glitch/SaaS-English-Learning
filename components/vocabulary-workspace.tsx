@@ -11,19 +11,30 @@ import {
 import { parseVocabularyCsv, type ParsedVocabularyCsv } from "@/lib/vocabulary/csv";
 import {
   STUDY_SESSION_LIMIT,
-  isReviewDue,
   isStudyEligible,
 } from "@/lib/vocabulary/study-session";
-import type { VocabularyGroup, VocabularyItem } from "@/lib/vocabulary/types";
+import {
+  getVocabularyProgressStatus,
+  isReviewDue,
+  matchesVocabularyFilter,
+  type VocabularyFilter,
+} from "@/lib/vocabulary/status";
+import type { VocabularyItem } from "@/lib/vocabulary/types";
 
-const filters: Array<"all" | VocabularyGroup> = [
-  "all",
-  "unknown",
-  "learning",
-  "weak",
-  "repeat",
-  "known",
+const filters: Array<{ value: VocabularyFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "new", label: "New" },
+  { value: "learning", label: "Learning" },
+  { value: "mastered", label: "Mastered" },
+  { value: "due", label: "Due today" },
 ];
+
+const statusPresentation = {
+  new: { label: "New", className: "unknown" },
+  learning: { label: "Learning", className: "learning" },
+  mastered: { label: "Mastered", className: "known" },
+  due: { label: "Due today", className: "repeat" },
+} as const;
 
 function formatDueDate(date: string | null) {
   if (!date) return "Not scheduled";
@@ -46,7 +57,7 @@ export function VocabularyWorkspace({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<(typeof filters)[number]>("all");
+  const [filter, setFilter] = useState<VocabularyFilter>("all");
   const [message, setMessage] = useState(loadError);
   const [pending, setPending] = useState(false);
   const [csv, setCsv] = useState<ParsedVocabularyCsv | null>(null);
@@ -60,16 +71,19 @@ export function VocabularyWorkspace({
   const [deleteMessage, setDeleteMessage] = useState("");
 
   const counts = useMemo(() => {
-    const result = Object.fromEntries(filters.map((name) => [name, 0])) as Record<
-      (typeof filters)[number],
-      number
-    >;
-    result.all = initialItems.length;
+    const result: Record<VocabularyFilter, number> = {
+      all: initialItems.length,
+      new: 0,
+      learning: 0,
+      mastered: 0,
+      due: 0,
+    };
     initialItems.forEach((item) => {
-      result[item.current_group] += 1;
+      result[getVocabularyProgressStatus(item)] += 1;
+      if (isReviewDue(item, today)) result.due += 1;
     });
     return result;
-  }, [initialItems]);
+  }, [initialItems, today]);
 
   const itemsById = useMemo(
     () => new Map(initialItems.map((item) => [item.id, item])),
@@ -85,24 +99,18 @@ export function VocabularyWorkspace({
   const studySelectedIds = eligibleSelectedItems
     .slice(0, STUDY_SESSION_LIMIT)
     .map((item) => item.id);
-  const reviewSelectedItems = activeSelectedItems.filter((item) =>
-    isReviewDue(item, today),
-  );
-  const reviewSelectedIds = reviewSelectedItems
-    .slice(0, STUDY_SESSION_LIMIT)
-    .map((item) => item.id);
 
   const visibleItems = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase("en");
     return initialItems.filter((item) => {
-      const matchesFilter = filter === "all" || item.current_group === filter;
+      const matchesFilter = matchesVocabularyFilter(item, filter, today);
       const matchesQuery =
         !normalizedQuery ||
         item.english_word.toLocaleLowerCase("en").includes(normalizedQuery) ||
         item.translation.toLocaleLowerCase().includes(normalizedQuery);
       return matchesFilter && matchesQuery;
     });
-  }, [filter, initialItems, query]);
+  }, [filter, initialItems, query, today]);
 
   async function addWord(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -182,10 +190,8 @@ export function VocabularyWorkspace({
   }
 
   function openReviewSession() {
-    if (reviewSelectedIds.length === 0) return;
-    const search = new URLSearchParams();
-    reviewSelectedIds.forEach((id) => search.append("id", id));
-    router.push(`/review?${search.toString()}`);
+    if (counts.due === 0) return;
+    router.push("/review");
   }
 
   function openEditSelected() {
@@ -347,16 +353,12 @@ export function VocabularyWorkspace({
             : "Choose words from your collection."}
         </h2>
         <p className="study-selection-copy">
-          Start unscheduled words in Study. Words whose review date has arrived open
-          directly in Review.
+          Select new words only when you want to study them. Reviews are collected
+          automatically when their date arrives.
         </p>
         <div className="selection-actions">
           <button
-            className={
-              studySelectedIds.length > 0 || reviewSelectedIds.length === 0
-                ? "primary-button"
-                : "secondary-button"
-            }
+            className="primary-button"
             type="button"
             disabled={studySelectedIds.length === 0 || pending}
             onClick={openStudySession}
@@ -364,16 +366,12 @@ export function VocabularyWorkspace({
             Study selected ({studySelectedIds.length})
           </button>
           <button
-            className={
-              reviewSelectedIds.length > 0 && studySelectedIds.length === 0
-                ? "primary-button"
-                : "secondary-button"
-            }
+            className="secondary-button"
             type="button"
-            disabled={reviewSelectedIds.length === 0 || pending}
+            disabled={counts.due === 0 || pending}
             onClick={openReviewSession}
           >
-            Review selected ({reviewSelectedIds.length})
+            Review due today ({counts.due})
           </button>
           <button
             className="secondary-button"
@@ -416,9 +414,9 @@ export function VocabularyWorkspace({
           {eligibleSelectedItems.length > STUDY_SESSION_LIMIT
             ? " Study uses the first 10 eligible selected words."
             : ""}
-          {reviewSelectedItems.length > STUDY_SESSION_LIMIT
-            ? " Review uses the first 10 due selected words."
-            : ""}
+          {counts.due > 0
+            ? " The review button always opens the full due queue; selection does not affect it."
+            : " No reviews are due today."}
         </small>
       </section>
 
@@ -438,29 +436,32 @@ export function VocabularyWorkspace({
             />
           </label>
         </div>
-        <div className="filter-tabs" role="group" aria-label="Filter by vocabulary group">
-          {filters.map((name) => (
+        <div className="filter-tabs" role="group" aria-label="Filter by vocabulary status">
+          {filters.map(({ value, label }) => (
             <button
-              className={filter === name ? "active" : ""}
+              className={filter === value ? "active" : ""}
               type="button"
-              onClick={() => setFilter(name)}
-              key={name}
+              onClick={() => setFilter(value)}
+              key={value}
             >
-              {name}
-              <span>{counts[name]}</span>
+              {label}
+              <span>{counts[value]}</span>
             </button>
           ))}
         </div>
         <div className="word-table" role="table" aria-label="Vocabulary items">
           <div className="word-table-head" role="row">
             <span>Word</span>
-            <span>Group</span>
+            <span>Status</span>
             <span>Stage</span>
             <span>Next review</span>
             <span>Select</span>
           </div>
           {visibleItems.map((item) => {
             const selected = activeSelectedIdSet.has(item.id);
+            const status = isReviewDue(item, today)
+              ? statusPresentation.due
+              : statusPresentation[getVocabularyProgressStatus(item)];
 
             return (
               <div
@@ -473,8 +474,8 @@ export function VocabularyWorkspace({
                   <small>{item.translation}</small>
                 </div>
                 <span>
-                  <span className={`group-badge ${item.current_group}`}>
-                    {item.current_group}
+                  <span className={`group-badge ${status.className}`}>
+                    {status.label}
                   </span>
                 </span>
                 <span>{item.repetition_stage === 0 ? "—" : `${item.repetition_stage} / 5`}</span>

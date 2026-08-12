@@ -3,6 +3,7 @@
 ## Status
 
 - Approved product direction: 2026-07-13.
+- Automatic daily queue revision: 2026-08-12.
 - Intended implementation branch: `feature/spaced-repetition`.
 - This document refines the `Vocabulary` and `Review And Spaced Repetition` sections of `MVP_SPEC.md`.
 - If this document conflicts with the general MVP description for vocabulary review behavior, this document is authoritative for this implementation stage.
@@ -32,6 +33,10 @@ The feature should preserve the current clean dashboard style and remain usable 
 - Keep the current interface language in English while structuring new copy so future Russian/English localization is possible.
 
 ## Vocabulary Groups
+
+These values record the most recent recall quality for scheduling and history. They
+are not permanent library folders and must not be presented as the daily review
+queue.
 
 Each vocabulary item has exactly one current group:
 
@@ -128,18 +133,29 @@ When a stage 1 word receives a `known` result, it advances to stage 2 and is due
 - Store event timestamps with timezone and store the next due value as a calendar date.
 - If the user has no configured timezone yet, use the timezone detected during onboarding and save it to the user settings. Do not continually recalculate old due dates from the device timezone.
 - A word is due when `next_review_date` is equal to or earlier than the user's current local date.
+- The daily review queue is generated automatically from all due words. The user
+  does not select individual due words before starting Review.
+- Loading or reloading the queue is read-only. It must not change a word's group,
+  stage, or next review date.
 - Overdue words remain in the queue until reviewed.
 - A word appears at most once in a generated daily review queue.
-- Order due words by oldest due date first. For the same due date, use this priority: `learning`, `weak`, `repeat`, `known`.
+- Order due words by oldest due date first, then by creation date for a stable order.
 - A result schedules from the actual submission date. Do not backdate the next interval from an overdue due date.
-- When a review date is missed, move the word back exactly one repetition stage,
-  with stage 1 as the floor. Apply this decay only once for that missed due date,
-  even if the learner returns several days later or opens the queue repeatedly.
-- A decayed word remains due and is placed in `repeat`. A fast correct answer on
-  that recovery review keeps the decayed stage instead of immediately undoing
-  the penalty. Schedule its next review from the actual submission date using
-  the interval of the decayed stage. For example, a missed stage 4 review moves
-  to stage 3 and is next scheduled three calendar days after the recovery review.
+- After a confirmed answer, remove the word from today's queue immediately and
+  assign a future review date from the actual submission date.
+
+## Library Progress Status
+
+The Vocabulary library derives a simple learner-facing status from the schedule:
+
+- `New`: stage 0 with no review date.
+- `Learning`: stages 1 through 4.
+- `Mastered`: stage 5, which remains on the 30-day maintenance interval.
+- `Due today`: a temporary, overlapping filter for any scheduled word whose review
+  date has arrived. It is not a permanent progress status.
+
+A reviewed word leaves `Due today` as soon as its next review date moves into the
+future. It remains visible in the permanent library under `Learning` or `Mastered`.
 
 ## Vocabulary Management
 
@@ -169,8 +185,9 @@ When a stage 1 word receives a `known` result, it advances to stage 2 and is due
 
 ### Vocabulary
 
-- List the user's words with search and group filtering.
-- Show group counts.
+- List the user's words with search and `New`, `Learning`, `Mastered`, and
+  `Due today` filtering.
+- Show progress-status counts and a temporary due count.
 - Add a word manually.
 - Import CSV.
 - Select `unknown` words for learning.
@@ -180,6 +197,8 @@ When a stage 1 word receives a `known` result, it advances to stage 2 and is due
 ### Review
 
 - Show the number of words due today.
+- Open the complete due queue automatically; URL parameters and library selection
+  must not narrow the scheduled queue.
 - Present one word card at a time.
 - Reveal the translation before accepting an outcome.
 - Record `Correct` or `Incorrect` plus measured response time.
@@ -302,6 +321,7 @@ This stage is complete when:
 - the fifth successful stage continues on a 30-day maintenance interval;
 - history is saved for every submitted review;
 - due and overdue words appear in the correct queue order;
+- reviewed words immediately leave `Due today` while remaining in the library;
 - the dashboard shows real due data and routes to the new screens;
 - responsive layout, keyboard access, focus states, and light/dark themes continue to work;
 - unit tests cover the learning algorithm;

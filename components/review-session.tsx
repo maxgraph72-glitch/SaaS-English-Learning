@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   setDailyBlockStatusAction,
   submitVocabularyReviewAction,
@@ -12,11 +12,9 @@ import {
   resolveReviewShortcut,
   rotateCurrentToEnd,
 } from "@/lib/vocabulary/study-session";
-import type { VocabularyGroup, VocabularyItem } from "@/lib/vocabulary/types";
+import type { VocabularyItem } from "@/lib/vocabulary/types";
 
 interface ReviewResult {
-  group: VocabularyGroup;
-  responseTimeMs: number;
   correct: boolean;
 }
 
@@ -90,14 +88,8 @@ export function ReviewSession({
     return () => window.cancelAnimationFrame(frame);
   }, [cardAttempt, current]);
 
-  const groupCounts = useMemo(
-    () =>
-      results.reduce<Partial<Record<VocabularyGroup, number>>>((counts, result) => {
-        counts[result.group] = (counts[result.group] ?? 0) + 1;
-        return counts;
-      }, {}),
-    [results],
-  );
+  const rememberedCount = results.filter((result) => result.correct).length;
+  const needsPracticeCount = results.length - rememberedCount;
 
   const reveal = useCallback(() => {
     if (!current || revealed || pending) return;
@@ -193,15 +185,15 @@ export function ReviewSession({
     setResults((existing) => [
       ...existing,
       {
-        group: result.outcome.group_after as VocabularyGroup,
-        responseTimeMs,
         correct,
       },
     ]);
     setQueue((existing) => completeCurrentAfterConfirmation(existing, true));
     setRevealed(false);
     setResponseTimeMs(null);
-    setAnnouncement(`${current.english_word} review saved.`);
+    setAnnouncement(
+      `${current.english_word} completed for today. Next review ${result.outcome.next_review_date}.`,
+    );
   }, [current, mode, pending, responseTimeMs, revealed]);
 
   useEffect(() => {
@@ -273,26 +265,36 @@ export function ReviewSession({
             {mode === "practice"
               ? "Today's words are reinforced."
               : results.length > 0
-              ? "Nicely done. Your schedule is up to date."
+              ? "Everything due today is complete."
               : "Nothing is due right now."}
           </h1>
           <p>
             {mode === "practice"
               ? `${practiceRemembered} ${practiceRemembered === 1 ? "word" : "words"} practiced without changing tomorrow's schedule. You used Again ${practiceAgainAttempts} ${practiceAgainAttempts === 1 ? "time" : "times"}.`
               : results.length > 0
-              ? `${results.length} ${results.length === 1 ? "word" : "words"} reviewed. New dates were scheduled from today.`
+              ? `${results.length} ${results.length === 1 ? "word has" : "words have"} left today's queue. Each one now has a new review date.`
               : learnedTodayQueue.length > 0
                 ? `${learnedTodayQueue.length} ${learnedTodayQueue.length === 1 ? "word learned" : "words learned"} today are ready for extra practice.`
                 : "Learn a new word or come back on the next scheduled day."}
           </p>
           {mode === "scheduled" && results.length > 0 ? (
             <div className="result-groups">
-              {(["known", "repeat", "weak", "learning"] as const).map((group) => (
-                <div key={group}>
-                  <strong>{groupCounts[group] ?? 0}</strong>
-                  <span>{group}</span>
-                </div>
-              ))}
+              <div>
+                <strong>{results.length}</strong>
+                <span>reviewed</span>
+              </div>
+              <div>
+                <strong>{rememberedCount}</strong>
+                <span>remembered</span>
+              </div>
+              <div>
+                <strong>{needsPracticeCount}</strong>
+                <span>needs practice</span>
+              </div>
+              <div>
+                <strong>0</strong>
+                <span>remaining</span>
+              </div>
             </div>
           ) : null}
           {mode === "scheduled" && practiceLoadError ? (
@@ -365,8 +367,8 @@ export function ReviewSession({
               {mode === "practice" ? "Learned today" : `Stage ${current.repetition_stage}`}
             </span>
             <div className="card-meta-actions">
-              <span className={`group-badge ${current.current_group}`}>
-                {current.current_group}
+              <span className="group-badge repeat">
+                {mode === "practice" ? "Practice" : "Due today"}
               </span>
               <button
                 className="later-button"
@@ -404,7 +406,7 @@ export function ReviewSession({
           >
             <strong>{mode === "practice" ? "Again" : "Incorrect"}</strong>
             <span>
-              {mode === "practice" ? "Return to this word" : "Reset to tomorrow"}{" "}
+              {mode === "practice" ? "Return to this word" : "Schedule for tomorrow"}{" "}
               <kbd>1</kbd>
             </span>
           </button>
@@ -418,7 +420,7 @@ export function ReviewSession({
           >
             <strong>{mode === "practice" ? "Remembered" : "Correct"}</strong>
             <span>
-              {mode === "practice" ? "Complete this card" : "Use recall time"}{" "}
+              {mode === "practice" ? "Complete this card" : "Schedule by recall"}{" "}
               <kbd>2</kbd>
             </span>
           </button>
@@ -431,7 +433,7 @@ export function ReviewSession({
         <p className="review-note">
           {mode === "practice"
             ? "This extra practice does not change the first review already scheduled for tomorrow."
-            : "Correctness has priority over time. Reading the revealed answer is never timed."}
+            : "Every answer removes this word from today's queue and schedules its next review. Correctness has priority over time."}
         </p>
       </section>
     </div>

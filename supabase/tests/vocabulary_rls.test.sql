@@ -114,7 +114,7 @@ select is(
 
 select lives_ok(
   $$ select count(*) from public.get_due_vocabulary() $$,
-  'loading the due queue applies missed-review decay'
+  'loading the automatic due queue succeeds'
 );
 select is(
   (
@@ -127,8 +127,8 @@ select is(
     from public.vocabulary_items
     where id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
   ),
-  concat_ws('|', 3, current_date, true),
-  'a missed stage 4 review moves back once to stage 3 and stays due'
+  concat_ws('|', 4, current_date - 1, false),
+  'loading the due queue does not mutate an overdue word'
 );
 select lives_ok(
   $$ select count(*) from public.get_due_vocabulary() $$,
@@ -140,8 +140,8 @@ select is(
     from public.vocabulary_items
     where id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
   ),
-  3,
-  'reloading the due queue does not apply another decay'
+  4,
+  'reloading the due queue remains read only'
 );
 select is(
   (
@@ -153,8 +153,8 @@ select is(
       'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'
     )
   ),
-  concat_ws('|', 'repeat', 3, current_date + 3),
-  'a fast recovery review keeps stage 3 and schedules three days from today'
+  concat_ws('|', 'known', 5, current_date + 30),
+  'an overdue word schedules from the actual answer and recall quality'
 );
 select is(
   (
@@ -163,7 +163,7 @@ select is(
     where id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
   ),
   false,
-  'the missed-review penalty clears after the recovery review'
+  'the deprecated missed-review flag remains cleared'
 );
 
 select set_config(

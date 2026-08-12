@@ -14,7 +14,6 @@ export interface ReviewInput {
   responseTimeMs: number;
   currentStage: RepetitionStage;
   reviewDate: string;
-  missedReview?: boolean;
 }
 
 export interface ReviewOutcome {
@@ -51,13 +50,6 @@ export function scheduleNewlyLearned(learnedDate: string): ReviewOutcome {
   };
 }
 
-export function decayMissedStage(currentStage: RepetitionStage): RepetitionStage {
-  if (!(currentStage in STAGE_INTERVAL_DAYS)) {
-    throw new Error("Repetition stage must be between 1 and 5.");
-  }
-  return Math.max(currentStage - 1, 1) as RepetitionStage;
-}
-
 export function calculateReviewOutcome(input: ReviewInput): ReviewOutcome {
   if (!Number.isInteger(input.responseTimeMs) || input.responseTimeMs < 0) {
     throw new Error("Response time must be a non-negative integer.");
@@ -68,21 +60,16 @@ export function calculateReviewOutcome(input: ReviewInput): ReviewOutcome {
 
   let group: ReviewGroup;
   let stage: RepetitionStage;
-  const effectiveStage = input.missedReview
-    ? decayMissedStage(input.currentStage)
-    : input.currentStage;
 
   if (!input.correct) {
     group = "learning";
     stage = 1;
   } else if (input.responseTimeMs < 3000) {
-    group = input.missedReview ? "repeat" : "known";
-    stage = input.missedReview
-      ? effectiveStage
-      : (Math.min(effectiveStage + 1, 5) as RepetitionStage);
+    group = "known";
+    stage = Math.min(input.currentStage + 1, 5) as RepetitionStage;
   } else if (input.responseTimeMs <= 5000) {
     group = "repeat";
-    stage = effectiveStage;
+    stage = input.currentStage;
   } else if (input.responseTimeMs <= 10000) {
     group = "weak";
     stage = 1;
