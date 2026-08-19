@@ -22,6 +22,13 @@ const automaticQueueMigration = readFileSync(
   ),
   "utf8",
 ).toLocaleLowerCase("en");
+const dueQueuePermissionFixMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260819090149_fix_due_vocabulary_permissions.sql",
+    import.meta.url,
+  ),
+  "utf8",
+).toLocaleLowerCase("en");
 
 describe("database safety contract", () => {
   it("protects duplicate review and learned submissions transactionally", () => {
@@ -75,6 +82,18 @@ describe("database safety contract", () => {
     expect(dueQueueFunction).toContain("item.next_review_date <= v_local_date");
     expect(dueQueueFunction).not.toContain("update public.vocabulary_items");
     expect(automaticQueueMigration).toContain(
+      "grant execute on function public.get_due_vocabulary() to authenticated",
+    );
+  });
+
+  it("loads due words without granting access to the private schema", () => {
+    expect(dueQueuePermissionFixMigration).toContain("security invoker");
+    expect(dueQueuePermissionFixMigration).toContain("public.user_settings");
+    expect(dueQueuePermissionFixMigration).not.toContain("private.user_local_date");
+    expect(dueQueuePermissionFixMigration).toContain(
+      "revoke all on function public.get_due_vocabulary() from public, anon",
+    );
+    expect(dueQueuePermissionFixMigration).toContain(
       "grant execute on function public.get_due_vocabulary() to authenticated",
     );
   });

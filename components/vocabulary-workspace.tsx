@@ -11,6 +11,7 @@ import {
 import { parseVocabularyCsv, type ParsedVocabularyCsv } from "@/lib/vocabulary/csv";
 import {
   STUDY_SESSION_LIMIT,
+  isPracticeEligible,
   isStudyEligible,
 } from "@/lib/vocabulary/study-session";
 import {
@@ -97,6 +98,10 @@ export function VocabularyWorkspace({
   const activeSelectedIdSet = new Set(activeSelectedIds);
   const eligibleSelectedItems = activeSelectedItems.filter(isStudyEligible);
   const studySelectedIds = eligibleSelectedItems
+    .slice(0, STUDY_SESSION_LIMIT)
+    .map((item) => item.id);
+  const eligiblePracticeItems = activeSelectedItems.filter(isPracticeEligible);
+  const practiceSelectedIds = eligiblePracticeItems
     .slice(0, STUDY_SESSION_LIMIT)
     .map((item) => item.id);
 
@@ -192,6 +197,13 @@ export function VocabularyWorkspace({
   function openReviewSession() {
     if (counts.due === 0) return;
     router.push("/review");
+  }
+
+  function openPracticeSession() {
+    if (practiceSelectedIds.length === 0) return;
+    const search = new URLSearchParams();
+    practiceSelectedIds.forEach((id) => search.append("practice", id));
+    router.push(`/review?${search.toString()}`);
   }
 
   function openEditSelected() {
@@ -353,8 +365,8 @@ export function VocabularyWorkspace({
             : "Choose words from your collection."}
         </h2>
         <p className="study-selection-copy">
-          Select new words only when you want to study them. Reviews are collected
-          automatically when their date arrives.
+          Select new words to study or learned words to practice whenever you want.
+          Scheduled reviews are still collected automatically when their date arrives.
         </p>
         <div className="selection-actions">
           <button
@@ -364,6 +376,14 @@ export function VocabularyWorkspace({
             onClick={openStudySession}
           >
             Study selected ({studySelectedIds.length})
+          </button>
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={practiceSelectedIds.length === 0 || pending}
+            onClick={openPracticeSession}
+          >
+            Practice selected ({practiceSelectedIds.length})
           </button>
           <button
             className="secondary-button"
@@ -413,6 +433,9 @@ export function VocabularyWorkspace({
           Editing preserves progress and schedule. Deleting also removes review history.
           {eligibleSelectedItems.length > STUDY_SESSION_LIMIT
             ? " Study uses the first 10 eligible selected words."
+            : ""}
+          {eligiblePracticeItems.length > STUDY_SESSION_LIMIT
+            ? " Practice uses the first 10 eligible selected words."
             : ""}
           {counts.due > 0
             ? " The review button always opens the full due queue; selection does not affect it."

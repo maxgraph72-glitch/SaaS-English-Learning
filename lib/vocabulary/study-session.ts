@@ -87,6 +87,12 @@ export function isStudyEligible(
   );
 }
 
+export function isPracticeEligible(
+  item: Pick<VocabularyItem, "repetition_stage" | "next_review_date">,
+) {
+  return item.repetition_stage > 0 && item.next_review_date !== null;
+}
+
 export function restoreSelectionOrder<T extends { id: string }>(
   selectedIds: readonly string[],
   items: readonly T[],

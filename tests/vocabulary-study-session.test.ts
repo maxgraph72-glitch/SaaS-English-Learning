@@ -3,6 +3,7 @@ import {
   STUDY_SESSION_LIMIT,
   completeCurrentAfterConfirmation,
   getQueueProgress,
+  isPracticeEligible,
   isStudyEligible,
   parseStudyItemIds,
   resolveReviewShortcut,
@@ -78,6 +79,15 @@ describe("vocabulary study selection", () => {
     ).toBe(false);
   });
 
+  it("allows scheduled learned words to be practiced without making new words eligible", () => {
+    expect(
+      isPracticeEligible({ repetition_stage: 1, next_review_date: "2026-08-20" }),
+    ).toBe(true);
+    expect(
+      isPracticeEligible({ repetition_stage: 5, next_review_date: "2026-09-18" }),
+    ).toBe(true);
+    expect(isPracticeEligible({ repetition_stage: 0, next_review_date: null })).toBe(false);
+  });
 });
 
 describe("card session queues", () => {

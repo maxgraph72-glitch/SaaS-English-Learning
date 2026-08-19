@@ -19,6 +19,7 @@ interface ReviewResult {
 }
 
 type ReviewMode = "scheduled" | "practice";
+type PracticeScope = "today" | "selected";
 
 function isEditableShortcutTarget(target: EventTarget | null) {
   return (
@@ -36,13 +37,19 @@ export function ReviewSession({
   learnedTodayQueue,
   loadError,
   practiceLoadError,
+  initialMode,
+  practiceScope = "today",
 }: {
   initialQueue: VocabularyItem[];
   learnedTodayQueue: VocabularyItem[];
   loadError: string;
   practiceLoadError: string;
+  initialMode?: ReviewMode;
+  practiceScope?: PracticeScope;
 }) {
-  const startsWithPractice = initialQueue.length === 0 && learnedTodayQueue.length > 0;
+  const startsWithPractice =
+    initialMode === "practice" ||
+    (initialQueue.length === 0 && learnedTodayQueue.length > 0);
   const [mode, setMode] = useState<ReviewMode>(
     startsWithPractice ? "practice" : "scheduled",
   );
@@ -70,14 +77,22 @@ export function ReviewSession({
   const progress = getQueueProgress(total, queue.length);
 
   useEffect(() => {
-    if (total > 0) void setDailyBlockStatusAction("review", "in_progress");
-  }, [mode, total]);
+    if (total > 0 && (mode === "scheduled" || practiceScope === "today")) {
+      void setDailyBlockStatusAction("review", "in_progress");
+    }
+  }, [mode, practiceScope, total]);
 
   useEffect(() => {
-    if (mode === "practice" && practiceStarted && total > 0 && queue.length === 0) {
+    if (
+      mode === "practice" &&
+      practiceScope === "today" &&
+      practiceStarted &&
+      total > 0 &&
+      queue.length === 0
+    ) {
       void setDailyBlockStatusAction("review", "completed");
     }
-  }, [mode, practiceStarted, queue.length, total]);
+  }, [mode, practiceScope, practiceStarted, queue.length, total]);
 
   useEffect(() => {
     if (!current) return;
@@ -143,7 +158,7 @@ export function ReviewSession({
     setRevealed(false);
     setResponseTimeMs(null);
     setMessage("");
-    setAnnouncement(`${current.english_word} completed for today's practice.`);
+    setAnnouncement(`${current.english_word} completed for this practice.`);
   }, [current, mode, pending, revealed]);
 
   const submit = useCallback(async (correct: boolean) => {
@@ -259,18 +274,24 @@ export function ReviewSession({
             ✓
           </span>
           <p className="eyebrow">
-            {mode === "practice" ? "Today's practice complete" : "Queue complete"}
+            {mode === "practice"
+              ? practiceScope === "selected"
+                ? "Selected practice complete"
+                : "Today's practice complete"
+              : "Queue complete"}
           </p>
           <h1>
             {mode === "practice"
-              ? "Today's words are reinforced."
+              ? practiceScope === "selected"
+                ? "Your selected words are reinforced."
+                : "Today's words are reinforced."
               : results.length > 0
               ? "Everything due today is complete."
               : "Nothing is due right now."}
           </h1>
           <p>
             {mode === "practice"
-              ? `${practiceRemembered} ${practiceRemembered === 1 ? "word" : "words"} practiced without changing tomorrow's schedule. You used Again ${practiceAgainAttempts} ${practiceAgainAttempts === 1 ? "time" : "times"}.`
+              ? `${practiceRemembered} ${practiceRemembered === 1 ? "word" : "words"} practiced without changing the review schedule. You used Again ${practiceAgainAttempts} ${practiceAgainAttempts === 1 ? "time" : "times"}.`
               : results.length > 0
               ? `${results.length} ${results.length === 1 ? "word has" : "words have"} left today's queue. Each one now has a new review date.`
               : learnedTodayQueue.length > 0
@@ -330,11 +351,17 @@ export function ReviewSession({
       <section className="review-heading">
         <div>
           <p className="eyebrow">
-            {mode === "practice" ? "Today's practice" : "Review queue"}
+            {mode === "practice"
+              ? practiceScope === "selected"
+                ? "Selected practice"
+                : "Today's practice"
+              : "Review queue"}
           </p>
           <h1>
             {mode === "practice"
-              ? "Reinforce the words you learned today."
+              ? practiceScope === "selected"
+                ? "Reinforce the words you selected."
+                : "Reinforce the words you learned today."
               : "Recall first. Reveal second."}
           </h1>
           <p>
@@ -432,7 +459,7 @@ export function ReviewSession({
         ) : null}
         <p className="review-note">
           {mode === "practice"
-            ? "This extra practice does not change the first review already scheduled for tomorrow."
+            ? "This extra practice does not change the existing review schedule."
             : "Every answer removes this word from today's queue and schedules its next review. Correctness has priority over time."}
         </p>
       </section>
