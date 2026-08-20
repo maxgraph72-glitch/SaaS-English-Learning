@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "sourceSlug": "common-voice-format-fixture-cc0",
+  "sourceName": "Synthetic Common Voice format fixture",
+  "homepageUrl": "https://commonvoice.mozilla.org/en/datasets",
+  "licenseCode": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "termsUrl": "https://commonvoice.mozilla.org/terms",
+  "sourceRelease": "synthetic-fixture-2026-08-20",
+  "downloadedAt": "2026-08-20T00:00:00.000Z",
+  "archiveSha256": "d88667ea3cf4a3c98d175cf7509f0f9d5511903f7b458db9b4739489b974b15c",
+  "importerVersion": "practice-importer-1",
+  "attribution": "Synthetic sentences authored for this repository and dedicated to CC0 for importer tests.",
+  "fixture": true,
+  "fixtureNotice": "This is not a Mozilla Common Voice release and contains no copied Common Voice sentence records."
+}

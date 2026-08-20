@@ -34,6 +34,8 @@ export default function PrivacyPage() {
           Daily English stores account-owned vocabulary, review attempts and timing,
           learning-session status, settings, progress information, writing entries, and
           generated writing feedback so the application can provide its learning features.
+          Speaking practice also stores the private recording, transcript, score, and
+          practical feedback with the owning account.
         </p>
       </section>
       <section>
@@ -43,6 +45,16 @@ export default function PrivacyPage() {
           configured Yandex AI Studio model for correction. The application saves the
           original entry before requesting feedback and stores the returned feedback with
           your account.
+        </p>
+      </section>
+      <section>
+        <h2>Speaking feedback</h2>
+        <p>
+          When you actively request a Speaking check, the browser records a short mono
+          audio sample and uploads it to a private Supabase Storage bucket. The recording
+          is sent to Yandex SpeechKit for English transcription. Daily English stores the
+          transcript and a transparent score based on completeness, recognized words, and
+          speaking pace; it does not perform phoneme-level pronunciation assessment.
         </p>
       </section>
       <section>

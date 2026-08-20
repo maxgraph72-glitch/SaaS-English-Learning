@@ -3,6 +3,16 @@
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+function friendlyAuthError(message: string) {
+  if (/invalid login credentials/i.test(message)) {
+    return "Email or password is incorrect. On a new local setup, create an account below first.";
+  }
+  if (/failed to fetch|fetch failed/i.test(message)) {
+    return "The local database is unavailable. Start Supabase, then try again.";
+  }
+  return message;
+}
+
 export function LoginForm({
   googleAuthEnabled,
   initialError,
@@ -25,23 +35,28 @@ export function LoginForm({
     const password = String(form.get("password") ?? "");
     const supabase = createClient();
 
-    const result =
-      mode === "sign-in"
-        ? await supabase.auth.signInWithPassword({ email, password })
-        : await supabase.auth.signUp({ email, password });
+    try {
+      const result =
+        mode === "sign-in"
+          ? await supabase.auth.signInWithPassword({ email, password })
+          : await supabase.auth.signUp({ email, password });
 
-    if (result.error) {
-      setMessage(result.error.message);
-      setPending(false);
-      return;
-    }
-    if (mode === "sign-up" && !result.data.session) {
-      setMessage("Check your email to confirm your account, then sign in.");
-      setPending(false);
-      return;
-    }
+      if (result.error) {
+        setMessage(friendlyAuthError(result.error.message));
+        setPending(false);
+        return;
+      }
+      if (mode === "sign-up" && !result.data.session) {
+        setMessage("Check your email to confirm your account, then sign in.");
+        setPending(false);
+        return;
+      }
 
-    window.location.assign(nextPath);
+      window.location.assign(nextPath);
+    } catch {
+      setMessage("The local database is unavailable. Start Supabase, then try again.");
+      setPending(false);
+    }
   }
 
   async function signInWithGoogle() {

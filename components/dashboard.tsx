@@ -7,7 +7,7 @@ import type { DailySession } from "@/lib/vocabulary/types";
 
 const lessons = [
   { id: "vocabulary", number: "01", title: "Vocabulary", description: "Choose useful words and learn them at your pace", duration: "10 min", action: "Open vocabulary", tone: "mint", href: "/vocabulary" },
-  { id: "speaking", number: "02", title: "Speak aloud", description: "Speaking practice is planned for the next learning stage", duration: "10 min", action: "Coming later", tone: "peach", href: null },
+  { id: "speaking", number: "02", title: "Speak aloud", description: "Read five sentences and get clear, practical feedback", duration: "10 min", action: "Open speaking", tone: "peach", href: "/speaking" },
   { id: "writing", number: "03", title: "Daily writing", description: "Write a short entry and get focused AI feedback", duration: "10 min", action: "Open writing", tone: "lilac", href: "/writing" },
   { id: "review", number: "04", title: "Quick review", description: "Review due words or reinforce what you learned today", duration: "5 min", action: "Open review", tone: "sky", href: "/review" },
 ] as const;

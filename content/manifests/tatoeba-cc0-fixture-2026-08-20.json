@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "sourceSlug": "tatoeba-format-fixture-cc0",
+  "sourceName": "Synthetic Tatoeba CC0 format fixture",
+  "homepageUrl": "https://tatoeba.org/en/downloads",
+  "licenseCode": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "termsUrl": "https://tatoeba.org/en/terms_of_use",
+  "sourceRelease": "synthetic-fixture-2026-08-20",
+  "downloadedAt": "2026-08-20T00:00:00.000Z",
+  "archiveSha256": "02cf238b662e6654a1cd113d831982d15fab9ecf33edb92a8fe0bed252e06326",
+  "importerVersion": "practice-importer-1",
+  "attribution": "Synthetic sentences authored for this repository and dedicated to CC0 for importer tests.",
+  "fixture": true,
+  "fixtureNotice": "This is not a Tatoeba export and contains no copied Tatoeba sentence records."
+}

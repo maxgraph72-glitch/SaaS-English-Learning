@@ -13,7 +13,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:db": "supabase test db --local supabase/tests",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "content:generate": "node --experimental-strip-types scripts/content/generate-present-tenses.ts",
+    "content:validate": "node --experimental-strip-types scripts/content/validate-package.ts",
+    "content:publish": "node --experimental-strip-types scripts/content/publish-package.ts --publication"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.1",
