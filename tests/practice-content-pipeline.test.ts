@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import type { PracticeSourceManifest } from "../lib/practice/types";
 import { normalizedSentenceHash } from "../lib/practice/sentence-normalization";
@@ -8,7 +9,8 @@ import { importCommonVoiceTsv } from "../scripts/content/import-common-voice";
 import { importTatoebaCc0Tsv } from "../scripts/content/import-tatoeba-cc0";
 import { deduplicateCandidates } from "../scripts/content/normalize-sentences";
 import { buildPublicationSql } from "../scripts/content/publish-package";
-import { validateReviewPackage } from "../scripts/content/validate-package";
+import { PACKAGE_BUCKETS } from "../scripts/content/select-package";
+import { readReviewPackage, validateReviewPackage } from "../scripts/content/validate-package";
 
 const commonVoiceBytes = readFileSync(
   new URL("./fixtures/practice/common-voice-validated.tsv", import.meta.url),
@@ -73,5 +75,24 @@ describe("practice content pipeline", () => {
     expect(errors.some((error) => /fixtures cannot be published/i.test(error))).toBe(true);
     expect(errors.some((error) => /at least 800/i.test(error))).toBe(true);
     expect(() => buildPublicationSql(records)).toThrow(/human review/i);
+  });
+
+  it("keeps the real 800-item package balanced and pending human review", () => {
+    const records = readReviewPackage(fileURLToPath(new URL(
+      "../content/review/present-tenses-package-1.jsonl",
+      import.meta.url,
+    )));
+    expect(records).toHaveLength(800);
+    expect(records.every((record) => !record.source.fixture)).toBe(true);
+    expect(records.every((record) => record.reviewerDecision === null)).toBe(true);
+    expect(validateReviewPackage(records)).toEqual([]);
+
+    for (const bucket of PACKAGE_BUCKETS) {
+      expect(records.filter((record) =>
+        record.grammarTopic === bucket.grammarTopic
+        && record.exerciseType === bucket.exerciseType
+        && record.cefrEstimate === bucket.cefrEstimate
+      )).toHaveLength(bucket.count);
+    }
   });
 });

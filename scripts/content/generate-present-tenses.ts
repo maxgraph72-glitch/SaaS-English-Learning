@@ -83,16 +83,26 @@ export function generateFixtureReviewPackage(outputPath = resolve(
 }
 
 export function generateReviewPackage(input: {
-  commonVoicePath: string;
-  commonVoiceManifestPath: string;
-  tatoebaPath: string;
-  tatoebaManifestPath: string;
+  commonVoicePath?: string;
+  commonVoiceManifestPath?: string;
+  tatoebaPath?: string;
+  tatoebaManifestPath?: string;
   outputPath: string;
 }): PracticeReviewRecord[] {
-  const candidates = [
-    ...importCommonVoiceFile(input.commonVoicePath, readManifest(input.commonVoiceManifestPath)),
-    ...importTatoebaCc0File(input.tatoebaPath, readManifest(input.tatoebaManifestPath)),
-  ];
+  const candidates: SentenceCandidate[] = [];
+  if (input.commonVoicePath && input.commonVoiceManifestPath) {
+    candidates.push(
+      ...importCommonVoiceFile(input.commonVoicePath, readManifest(input.commonVoiceManifestPath)),
+    );
+  }
+  if (input.tatoebaPath && input.tatoebaManifestPath) {
+    candidates.push(
+      ...importTatoebaCc0File(input.tatoebaPath, readManifest(input.tatoebaManifestPath)),
+    );
+  }
+  if (candidates.length === 0) {
+    throw new Error("Real generation requires at least one corpus and pinned manifest pair.");
+  }
   const records = buildReviewRecords(candidates);
   writeReviewPackage(input.outputPath, records);
   return records;
@@ -121,16 +131,19 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const tatoebaManifestPath = flagValue("--tatoeba-manifest");
   const outputPath = flagValue("--output")
     ?? resolve(projectRoot, "content/review/present-tenses-package-1.jsonl");
-  const supplied = [commonVoicePath, commonVoiceManifestPath, tatoebaPath, tatoebaManifestPath];
-  if (supplied.some(Boolean) && !supplied.every(Boolean)) {
-    throw new Error("Real generation requires both corpus paths and both pinned manifest paths.");
+  if (Boolean(commonVoicePath) !== Boolean(commonVoiceManifestPath)) {
+    throw new Error("Common Voice generation requires both corpus and manifest paths.");
   }
-  const records = supplied.every(Boolean)
+  if (Boolean(tatoebaPath) !== Boolean(tatoebaManifestPath)) {
+    throw new Error("Tatoeba generation requires both corpus and manifest paths.");
+  }
+  const hasRealSource = Boolean(commonVoicePath || tatoebaPath);
+  const records = hasRealSource
     ? generateReviewPackage({
-        commonVoicePath: commonVoicePath!,
-        commonVoiceManifestPath: commonVoiceManifestPath!,
-        tatoebaPath: tatoebaPath!,
-        tatoebaManifestPath: tatoebaManifestPath!,
+        commonVoicePath: commonVoicePath ?? undefined,
+        commonVoiceManifestPath: commonVoiceManifestPath ?? undefined,
+        tatoebaPath: tatoebaPath ?? undefined,
+        tatoebaManifestPath: tatoebaManifestPath ?? undefined,
         outputPath,
       })
     : generateFixtureReviewPackage(outputPath);

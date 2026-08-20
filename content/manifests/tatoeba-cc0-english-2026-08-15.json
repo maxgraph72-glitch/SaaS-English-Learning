@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "sourceSlug": "tatoeba-english-sentences-cc0",
+  "sourceName": "Tatoeba English Sentences (CC0)",
+  "homepageUrl": "https://tatoeba.org/en/downloads",
+  "licenseCode": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "termsUrl": "https://tatoeba.org/en/terms_of_use",
+  "sourceRelease": "weekly-2026-08-15",
+  "downloadedAt": "2026-08-20T15:29:51.000Z",
+  "archiveSha256": "9e8b3d587be1bd7cf299e09387aeec5707d48d988e1bea14cba091ebc5250262",
+  "importerVersion": "practice-importer-1",
+  "attribution": "Tatoeba English Sentences (CC0), weekly export 2026-08-15; transformed into grammar exercises.",
+  "fixture": false
+}

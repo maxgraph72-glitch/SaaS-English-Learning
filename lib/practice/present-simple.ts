@@ -7,6 +7,76 @@ const IRREGULAR_THIRD_PERSON: Record<string, string> = {
 };
 
 const SUPPORTED_LEMMAS = [
+  "appreciate",
+  "arrive",
+  "believe",
+  "carry",
+  "collaborate",
+  "come",
+  "control",
+  "cook",
+  "create",
+  "define",
+  "do",
+  "drink",
+  "drive",
+  "eat",
+  "encourage",
+  "enjoy",
+  "exist",
+  "feel",
+  "find",
+  "focus",
+  "follow",
+  "get",
+  "have",
+  "hear",
+  "help",
+  "know",
+  "leave",
+  "like",
+  "listen",
+  "live",
+  "look",
+  "make",
+  "mean",
+  "need",
+  "play",
+  "prefer",
+  "prioritize",
+  "promote",
+  "question",
+  "read",
+  "reflect",
+  "require",
+  "say",
+  "see",
+  "seek",
+  "sing",
+  "sleep",
+  "smell",
+  "snow",
+  "speak",
+  "study",
+  "support",
+  "take",
+  "talk",
+  "think",
+  "track",
+  "trust",
+  "understand",
+  "use",
+  "value",
+  "wait",
+  "walk",
+  "want",
+  "watch",
+  "wear",
+  "wonder",
+  "work",
+] as const;
+
+const AFFIRMATIVE_LEMMAS = [
   "arrive",
   "carry",
   "come",
@@ -15,7 +85,6 @@ const SUPPORTED_LEMMAS = [
   "drink",
   "drive",
   "have",
-  "leave",
   "play",
   "read",
   "sleep",
@@ -26,6 +95,9 @@ const SUPPORTED_LEMMAS = [
   "watch",
   "work",
 ] as const;
+
+const MODAL_OR_NON_PRESENT_AUXILIARY = /\b(?:can(?:not|['’]t)?|could(?:n['’]t)?|did(?:n['’]t)?|may|might|must(?:n['’]t)?|should(?:n['’]t)?|will|won['’]t|would(?:n['’]t)?)\b|['’](?:d|ll)\b/iu;
+const PAST_PARTICIPLES_AFTER_HAVE = /^(?:been|changed|come|delayed|done|driven|expired|finished|found|given|gone|had|heard|known|learned|left|lost|made|played|read|said|seen|started|studied|taken|worked|written)\b/iu;
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
@@ -107,8 +179,10 @@ export function generatePresentSimpleExercise(sentence: string): GeneratedExerci
     );
   }
 
+  if (sentence.endsWith("?") || MODAL_OR_NON_PRESENT_AUXILIARY.test(sentence)) return null;
+
   const matches: Array<{ lemma: string; surface: string; index: number }> = [];
-  for (const lemma of SUPPORTED_LEMMAS) {
+  for (const lemma of AFFIRMATIVE_LEMMAS) {
     for (const surface of [lemma, toThirdPersonSingular(lemma)]) {
       const match = new RegExp(`\\b${escapeRegExp(surface)}\\b`, "iu").exec(sentence);
       if (match) matches.push({ lemma, surface: match[0], index: match.index });
@@ -121,6 +195,14 @@ export function generatePresentSimpleExercise(sentence: string): GeneratedExerci
   if (unique.length !== 1) return null;
 
   const target = unique[0];
+  const prefix = sentence.slice(0, target.index);
+  const remainder = sentence.slice(target.index + target.surface.length).trimStart();
+  if (
+    target.index === 0
+    || /^(?:do not|don't)\b/iu.test(sentence)
+    || /^(?:hey|now|please)[,!]?\s*$/iu.test(prefix)
+    || (target.lemma === "have" && PAST_PARTICIPLES_AFTER_HAVE.test(remainder))
+  ) return null;
   const prompt = `${sentence.slice(0, target.index)}___${sentence.slice(target.index + target.surface.length)} (${target.lemma})`;
   const thirdPerson = target.surface.toLocaleLowerCase("en") === toThirdPersonSingular(target.lemma);
   return createExercise(

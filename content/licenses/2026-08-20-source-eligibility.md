@@ -21,9 +21,12 @@ release manifest.
 - Eligible export: the separate weekly `Sentences (CC0)` export.
 - Documented fields: sentence ID, language, text, and last-modified date.
 - License displayed by the source: CC0-1.0 for this separate subset.
-- Decision: eligible in principle. The general sentence export remains CC BY
-  and must not be mixed into Package 1. No weekly export was downloaded or
-  imported in this repository.
+- Acquired export: English-only `eng_sentences_CC0.tsv.bz2`, last modified
+  2026-08-15 06:30:40 UTC and downloaded 2026-08-20.
+- Compressed SHA-256: `6ab169264a28008c25bf63042bf7535fc63137c9d7e09b7b8bd7812d10117d1b`.
+- Imported TSV SHA-256: `9e8b3d587be1bd7cf299e09387aeec5707d48d988e1bea14cba091ebc5250262`.
+- Decision: eligible for the Package 1 review queue. The general sentence
+  export remains CC BY and must not be mixed into Package 1.
 
 ## Current fixture status
 

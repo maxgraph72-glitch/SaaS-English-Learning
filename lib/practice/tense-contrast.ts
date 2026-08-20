@@ -2,6 +2,11 @@ import type { GeneratedExercise } from "./types";
 
 const EXPLICIT_CONTINUOUS_SIGNALS = [
   { pattern: /^look[!,]/iu, signal: "Look!" },
+  { pattern: /\bright now\b/iu, signal: "right now" },
+  { pattern: /\bat the moment\b/iu, signal: "at the moment" },
+  { pattern: /\bcurrently\b/iu, signal: "currently" },
+  { pattern: /\bnow\b/iu, signal: "now" },
+  { pattern: /\btoday\b/iu, signal: "today" },
   { pattern: /\bthis (?:week|month)\b/iu, signal: "a temporary this-week or this-month context" },
 ] as const;
 

@@ -30,6 +30,17 @@ describe("Present Simple deterministic generation", () => {
   it("rejects a sentence with more than one supported lexical target", () => {
     expect(generatePresentSimpleExercise("My brother studies English after work.")).toBeNull();
   });
+
+  it("rejects modal, imperative, question, and noun-only false positives", () => {
+    expect(generatePresentSimpleExercise("Tom wouldn't study French.")).toBeNull();
+    expect(generatePresentSimpleExercise("Live a peaceful life.")).toBeNull();
+    expect(generatePresentSimpleExercise("Hey, wait a minute!")).toBeNull();
+    expect(generatePresentSimpleExercise("Don't have a fit!")).toBeNull();
+    expect(generatePresentSimpleExercise("Does that excite you?")).toBeNull();
+    expect(generatePresentSimpleExercise("Data breaches undermine trust.")).toBeNull();
+    expect(generatePresentSimpleExercise("This offer has expired.")).toBeNull();
+    expect(generatePresentSimpleExercise("Those aren't carrot leaves.")).toBeNull();
+  });
 });
 
 describe("Present Continuous deterministic generation", () => {
@@ -57,6 +68,7 @@ describe("Present Continuous deterministic generation", () => {
 
   it("marks only explicit current or temporary contexts as tense contrasts", () => {
     expect(generatePresentTenseExercise("Look! It is snowing outside.")?.grammarTopic).toBe("present_simple_vs_continuous");
-    expect(generatePresentTenseExercise("The children are playing in the garden now.")?.grammarTopic).toBe("present_continuous");
+    expect(generatePresentTenseExercise("The children are playing in the garden now.")?.grammarTopic).toBe("present_simple_vs_continuous");
+    expect(generatePresentTenseExercise("The children are playing in the garden.")?.grammarTopic).toBe("present_continuous");
   });
 });

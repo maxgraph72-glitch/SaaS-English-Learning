@@ -4,6 +4,13 @@ No step in this document has been run against a remote database.
 
 ## 1. Acquire and pin real CC0 inputs
 
+Current status: the English-only Tatoeba CC0 weekly export dated 2026-08-15 was
+downloaded on 2026-08-20, checksummed, and recorded in
+`content/manifests/tatoeba-cc0-english-2026-08-15.json`. Common Voice English
+25.0 remains unavailable to this automated workflow because Mozilla requires a
+signed-in account, prior terms acceptance, and an authenticated download; the
+full archive is also 87.84 GB. No placeholder Common Voice data is used.
+
 1. Download Common Voice Scripted Speech English from the approved release and
    extract the validated TSV under ignored `content/raw/`.
 2. Download only Tatoeba's separate `Sentences (CC0)` weekly export, filter it
@@ -15,15 +22,18 @@ No step in this document has been run against a remote database.
 
 ## 2. Generate the review queue
 
-Run the generator with all four real input arguments and an explicit output:
+For the currently acquired Tatoeba source, run the generator and balanced
+selector with explicit paths:
 
 ```text
 node --experimental-strip-types scripts/content/generate-present-tenses.ts \
-  --common-voice content/raw/common-voice-validated.tsv \
-  --common-voice-manifest content/manifests/common-voice-25.0.json \
   --tatoeba content/raw/tatoeba-sentences-cc0.tsv \
   --tatoeba-manifest content/manifests/tatoeba-cc0-YYYY-MM-DD.json \
-  --output content/review/present-tenses-package-1.jsonl
+  --output content/raw/present-tenses-tatoeba-candidates.jsonl
+
+node --experimental-strip-types scripts/content/select-package.ts \
+  content/raw/present-tenses-tatoeba-candidates.jsonl \
+  content/review/present-tenses-package-1.jsonl
 ```
 
 The generator refuses to overwrite a file that already contains human review
