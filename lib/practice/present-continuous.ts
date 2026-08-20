@@ -1,4 +1,5 @@
 import type { GeneratedExercise, PracticeCefr } from "./types";
+import { EXPLICIT_SUBJECT_PATTERN, isEditoriallySafeSentence } from "./editorial-quality.ts";
 
 const EXPLICIT_DOUBLING = new Set([
   "begin",
@@ -237,18 +238,21 @@ function createExercise(input: {
 }
 
 export function generatePresentContinuousExercise(sentence: string): GeneratedExercise | null {
+  const leadingSignal = /^Look!\s+/iu.test(sentence) ? "Look! " : "";
+  const grammaticalSentence = leadingSignal ? sentence.slice(leadingSignal.length) : sentence;
+  if (!isEditoriallySafeSentence(grammaticalSentence)) return null;
   const participles = supportedParticiplePattern();
-  const question = sentence.match(
-    new RegExp(`^(Am|Is|Are)\\s+(.+?)\\s+(${participles})\\b(.*\\?)$`, "iu"),
+  const question = grammaticalSentence.match(
+    new RegExp(`^(Am|Is|Are)\\s+(${EXPLICIT_SUBJECT_PATTERN})\\s+(${participles})\\b([^?]*)\\?$`, "iu"),
   );
   if (question) {
     const [, auxiliary, subject, participle, rest] = question;
     const lemma = lemmaForParticiple(participle);
-    if (!lemma) return null;
+    if (!lemma || lemma === "be" || (lemma === "go" && /^\s+to\b/iu.test(rest))) return null;
     return createExercise({
       sentence,
       exerciseType: "question",
-      prompt: `___ ${subject} ${participle}${rest} (be)`,
+      prompt: `${leadingSignal}___ ${subject} ${participle}${rest}? (be)`,
       lemma,
       acceptedAnswers: [auxiliary.toLocaleLowerCase("en")],
       explanation: `${auxiliary} moves before the explicit subject in a Present Continuous question.`,
@@ -256,13 +260,13 @@ export function generatePresentContinuousExercise(sentence: string): GeneratedEx
     });
   }
 
-  const negative = sentence.match(
-    new RegExp(`^(.+?)\\s+(am not|is not|isn't|are not|aren't)\\s+(${participles})\\b(.*)$`, "iu"),
+  const negative = grammaticalSentence.match(
+    new RegExp(`^(${EXPLICIT_SUBJECT_PATTERN})\\s+(am not|is not|isn't|are not|aren't)\\s+(${participles})\\b(.*)$`, "iu"),
   );
   if (negative) {
     const [, subject, auxiliary, participle, rest] = negative;
     const lemma = lemmaForParticiple(participle);
-    if (!lemma) return null;
+    if (!lemma || lemma === "be" || (lemma === "go" && /^\s+to\b/iu.test(rest))) return null;
     const normalizedAuxiliary = auxiliary.toLocaleLowerCase("en");
     const be = normalizedAuxiliary.startsWith("am")
       ? "am"
@@ -278,7 +282,7 @@ export function generatePresentContinuousExercise(sentence: string): GeneratedEx
     return createExercise({
       sentence,
       exerciseType: "negative",
-      prompt: `${subject} ___${rest} (not/${lemma})`,
+      prompt: `${leadingSignal}${subject} ___${rest} (not/${lemma})`,
       lemma,
       acceptedAnswers: answers,
       explanation: `${be} agrees with the subject, followed by not and “${participle.toLocaleLowerCase("en")}”.`,
@@ -286,17 +290,17 @@ export function generatePresentContinuousExercise(sentence: string): GeneratedEx
     });
   }
 
-  const affirmative = sentence.match(
-    new RegExp(`^(.+?)\\s+(am|is|are)\\s+(${participles})\\b(.*)$`, "iu"),
+  const affirmative = grammaticalSentence.match(
+    new RegExp(`^(${EXPLICIT_SUBJECT_PATTERN})\\s+(am|is|are)\\s+(${participles})\\b(.*)$`, "iu"),
   );
   if (!affirmative) return null;
   const [, subject, auxiliary, participle, rest] = affirmative;
   const lemma = lemmaForParticiple(participle);
-  if (!lemma) return null;
+  if (!lemma || lemma === "be" || (lemma === "go" && /^\s+to\b/iu.test(rest))) return null;
   return createExercise({
     sentence,
     exerciseType: "affirmative",
-    prompt: `${subject} ___${rest} (${lemma})`,
+    prompt: `${leadingSignal}${subject} ___${rest} (${lemma})`,
     lemma,
     acceptedAnswers: [`${auxiliary.toLocaleLowerCase("en")} ${participle.toLocaleLowerCase("en")}`],
     explanation: `${auxiliary.toLocaleLowerCase("en")} agrees with the subject and “${participle.toLocaleLowerCase("en")}” describes the activity in progress.`,

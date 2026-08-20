@@ -1,4 +1,5 @@
 import type { GeneratedExercise, PracticeCefr } from "./types";
+import { EXPLICIT_SUBJECT_PATTERN, isEditoriallySafeSentence } from "./editorial-quality.ts";
 
 const IRREGULAR_THIRD_PERSON: Record<string, string> = {
   be: "is",
@@ -81,7 +82,6 @@ const AFFIRMATIVE_LEMMAS = [
   "carry",
   "come",
   "cook",
-  "do",
   "drink",
   "drive",
   "have",
@@ -97,7 +97,7 @@ const AFFIRMATIVE_LEMMAS = [
 ] as const;
 
 const MODAL_OR_NON_PRESENT_AUXILIARY = /\b(?:can(?:not|['’]t)?|could(?:n['’]t)?|did(?:n['’]t)?|may|might|must(?:n['’]t)?|should(?:n['’]t)?|will|won['’]t|would(?:n['’]t)?)\b|['’](?:d|ll)\b/iu;
-const PAST_PARTICIPLES_AFTER_HAVE = /^(?:been|changed|come|delayed|done|driven|expired|finished|found|given|gone|had|heard|known|learned|left|lost|made|played|read|said|seen|started|studied|taken|worked|written)\b/iu;
+const PAST_PARTICIPLES_AFTER_HAVE = /^(?:(?:already|always|just|never|recently|still)\s+)*(?:been|changed|come|delayed|done|driven|expired|finished|found|given|gone|had|heard|known|learned|left|lost|made|played|read|said|seen|started|studied|taken|worked|written)\b/iu;
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
@@ -142,16 +142,17 @@ function createExercise(
 }
 
 export function generatePresentSimpleExercise(sentence: string): GeneratedExercise | null {
+  if (!isEditoriallySafeSentence(sentence)) return null;
   const lemmaPattern = SUPPORTED_LEMMAS.map(escapeRegExp).join("|");
   const question = sentence.match(
-    new RegExp(`^(Do|Does)\\s+(.+?)\\s+(${lemmaPattern})\\b(.*\\?)$`, "iu"),
+    new RegExp(`^(Do|Does)\\s+(${EXPLICIT_SUBJECT_PATTERN})\\s+(${lemmaPattern})\\b([^?]*)\\?$`, "iu"),
   );
   if (question) {
     const [, auxiliary, subject, lemma, rest] = question;
     return createExercise(
       sentence,
       "question",
-      `___ ${subject} ${lemma}${rest} (do)`,
+      `___ ${subject} ${lemma}${rest}? (do)`,
       lemma.toLocaleLowerCase("en"),
       [auxiliary.toLocaleLowerCase("en")],
       `${auxiliary} agrees with the explicit subject; the main verb stays in the base form.`,
@@ -160,7 +161,7 @@ export function generatePresentSimpleExercise(sentence: string): GeneratedExerci
   }
 
   const negative = sentence.match(
-    new RegExp(`^(.+?)\\s+(do not|don't|does not|doesn't)\\s+(${lemmaPattern})\\b(.*)$`, "iu"),
+    new RegExp(`^(${EXPLICIT_SUBJECT_PATTERN})\\s+(do not|don't|does not|doesn't)\\s+(${lemmaPattern})\\b(.*)$`, "iu"),
   );
   if (negative) {
     const [, subject, auxiliary, lemmaValue, rest] = negative;
@@ -181,29 +182,28 @@ export function generatePresentSimpleExercise(sentence: string): GeneratedExerci
 
   if (sentence.endsWith("?") || MODAL_OR_NON_PRESENT_AUXILIARY.test(sentence)) return null;
 
-  const matches: Array<{ lemma: string; surface: string; index: number }> = [];
+  const matches: Array<{ lemma: string; surface: string; subject: string; rest: string }> = [];
   for (const lemma of AFFIRMATIVE_LEMMAS) {
     for (const surface of [lemma, toThirdPersonSingular(lemma)]) {
-      const match = new RegExp(`\\b${escapeRegExp(surface)}\\b`, "iu").exec(sentence);
-      if (match) matches.push({ lemma, surface: match[0], index: match.index });
+      const match = new RegExp(
+        `^(${EXPLICIT_SUBJECT_PATTERN})\\s+(${escapeRegExp(surface)})\\b(.*)$`,
+        "iu",
+      ).exec(sentence);
+      if (match) matches.push({ lemma, surface: match[2], subject: match[1], rest: match[3] });
     }
   }
   const unique = matches.filter(
     (match, index, all) =>
-      all.findIndex((other) => other.index === match.index && other.surface === match.surface) === index,
+      all.findIndex((other) => other.subject === match.subject && other.surface === match.surface) === index,
   );
   if (unique.length !== 1) return null;
 
   const target = unique[0];
-  const prefix = sentence.slice(0, target.index);
-  const remainder = sentence.slice(target.index + target.surface.length).trimStart();
+  const remainder = target.rest.trimStart();
   if (
-    target.index === 0
-    || /^(?:do not|don't)\b/iu.test(sentence)
-    || /^(?:hey|now|please)[,!]?\s*$/iu.test(prefix)
-    || (target.lemma === "have" && PAST_PARTICIPLES_AFTER_HAVE.test(remainder))
+    (target.lemma === "have" && PAST_PARTICIPLES_AFTER_HAVE.test(remainder))
   ) return null;
-  const prompt = `${sentence.slice(0, target.index)}___${sentence.slice(target.index + target.surface.length)} (${target.lemma})`;
+  const prompt = `${target.subject} ___${target.rest} (${target.lemma})`;
   const thirdPerson = target.surface.toLocaleLowerCase("en") === toThirdPersonSingular(target.lemma);
   return createExercise(
     sentence,

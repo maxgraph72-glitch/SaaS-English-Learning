@@ -27,8 +27,10 @@ describe("Present Simple deterministic generation", () => {
     expect(generatePresentSimpleExercise("Does she work here every day?")?.acceptedAnswers).toEqual(["does"]);
   });
 
-  it("rejects a sentence with more than one supported lexical target", () => {
-    expect(generatePresentSimpleExercise("My brother studies English after work.")).toBeNull();
+  it("targets the explicit finite verb when a later supported word is a noun", () => {
+    expect(generatePresentSimpleExercise("My brother studies English after work.")?.acceptedAnswers).toEqual([
+      "studies",
+    ]);
   });
 
   it("rejects modal, imperative, question, and noun-only false positives", () => {

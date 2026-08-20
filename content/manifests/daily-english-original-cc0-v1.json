@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "sourceSlug": "daily-english-original-cc0-v1",
+  "sourceName": "Daily English original practice corpus",
+  "homepageUrl": "https://daily-english-practice.maxgraph72.chatgpt.site/practice/sources",
+  "licenseCode": "CC0-1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "sourceRelease": "personal-practice-v1",
+  "downloadedAt": "2026-08-20T16:15:00.000Z",
+  "archiveSha256": "c246c50de8514984158a5ade84f84c74b0d8fb1b771c22530fbaa05851d1b41f",
+  "importerVersion": "controlled-templates-v1",
+  "attribution": "Original Daily English practice content, CC0-1.0.",
+  "fixture": false
+}

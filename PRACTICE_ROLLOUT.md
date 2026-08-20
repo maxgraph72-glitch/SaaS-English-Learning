@@ -1,6 +1,19 @@
 # Practice exercise bank — controlled rollout
 
-No step in this document has been run against a remote database.
+## Personal package release
+
+The production release uses 800 project-original CC0 exercises generated from
+controlled templates and exhaustively checked by the package audit. The
+project owner explicitly authorized AI editorial review for this personal
+learning project. Review metadata says exactly that; it does not claim a human
+line-by-line review.
+
+The earlier Tatoeba-derived draft remains excluded because its quality sample
+contained ambiguous and unsuitable exercises.
+
+Production now contains the complete 800-exercise personal package. The
+publication audit trail records 800 accepted candidates and 800 published
+exercises.
 
 ## 1. Acquire and pin real CC0 inputs
 
@@ -20,40 +33,33 @@ full archive is also 87.84 GB. No placeholder Common Voice data is used.
    terms URL, and importer version.
 4. Recheck the live source terms and update the eligibility snapshot.
 
-## 2. Generate the review queue
+## 2. Generate the personal package
 
-For the currently acquired Tatoeba source, run the generator and balanced
-selector with explicit paths:
+Rebuild the controlled original corpus, manifest, and approved review package:
 
 ```text
-node --experimental-strip-types scripts/content/generate-present-tenses.ts \
-  --tatoeba content/raw/tatoeba-sentences-cc0.tsv \
-  --tatoeba-manifest content/manifests/tatoeba-cc0-YYYY-MM-DD.json \
-  --output content/raw/present-tenses-tatoeba-candidates.jsonl
-
-node --experimental-strip-types scripts/content/select-package.ts \
-  content/raw/present-tenses-tatoeba-candidates.jsonl \
-  content/review/present-tenses-package-1.jsonl
+npm run content:build-personal
+npm run content:audit
 ```
 
-The generator refuses to overwrite a file that already contains human review
-decisions.
+The audit checks every line, reconstructs each completed sentence from the
+prompt and answer, verifies tense-specific answer shapes, and rejects unsafe,
+duplicate, unlicensed, or unapproved records.
 
-## 3. Human review and audit
+## 3. Editorial review and audit
 
-1. Review every record, preserving the real reviewer identity and timestamp.
-2. Reach at least 800 approved exercises within the topic tolerances.
+1. Preserve the real review method, reviewer identity, and timestamp.
+2. Keep exactly 800 approved exercises in the required topic mix.
 3. Resolve every license and safety warning.
-4. Audit at least 100 random approved records and reach at least 98% correctness.
-5. Correct every audit error and inspect the corresponding generation rule.
-6. Run `npm run content:validate`, then `npm run content:publish`.
+4. Audit all 800 records and correct every reported error.
+5. Run `npm run content:validate`, then `npm run content:publish`.
 
 The publication command only writes transaction-wrapped SQL to ignored
 `content/publish/`. It does not connect to Supabase.
 
 ## 4. Owner-approved deployment
 
-Only after separate approval:
+Completed after the owner's explicit approval:
 
 1. Back up and verify the target project.
 2. Apply the schema migration before application code.

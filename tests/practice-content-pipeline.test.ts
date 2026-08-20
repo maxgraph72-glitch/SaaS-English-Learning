@@ -9,6 +9,7 @@ import { importCommonVoiceTsv } from "../scripts/content/import-common-voice";
 import { importTatoebaCc0Tsv } from "../scripts/content/import-tatoeba-cc0";
 import { deduplicateCandidates } from "../scripts/content/normalize-sentences";
 import { buildPublicationSql } from "../scripts/content/publish-package";
+import { auditPracticePackage } from "../scripts/content/audit-package";
 import { PACKAGE_BUCKETS } from "../scripts/content/select-package";
 import { readReviewPackage, validateReviewPackage } from "../scripts/content/validate-package";
 
@@ -61,7 +62,7 @@ describe("practice content pipeline", () => {
       ...importCommonVoiceTsv(commonVoiceBytes, commonVoiceManifest),
       ...importTatoebaCc0Tsv(tatoebaBytes, tatoebaManifest),
     ]);
-    expect(records).toHaveLength(20);
+    expect(records).toHaveLength(21);
     expect(records.every((record) => record.reviewerDecision === null)).toBe(true);
     expect(records.every((record) => record.source.fixture)).toBe(true);
     expect(records.flatMap(validateReviewRecord)).toEqual([]);
@@ -77,15 +78,16 @@ describe("practice content pipeline", () => {
     expect(() => buildPublicationSql(records)).toThrow(/human review/i);
   });
 
-  it("keeps the real 800-item package balanced and pending human review", () => {
+  it("keeps the personal 800-item package balanced and editorially approved", () => {
     const records = readReviewPackage(fileURLToPath(new URL(
       "../content/review/present-tenses-package-1.jsonl",
       import.meta.url,
     )));
     expect(records).toHaveLength(800);
     expect(records.every((record) => !record.source.fixture)).toBe(true);
-    expect(records.every((record) => record.reviewerDecision === null)).toBe(true);
+    expect(records.every((record) => record.reviewerDecision === "approve")).toBe(true);
     expect(validateReviewPackage(records)).toEqual([]);
+    expect(auditPracticePackage(records)).toEqual([]);
 
     for (const bucket of PACKAGE_BUCKETS) {
       expect(records.filter((record) =>

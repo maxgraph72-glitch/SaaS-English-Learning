@@ -16,6 +16,8 @@
     "typecheck": "tsc --noEmit",
     "content:generate": "node --experimental-strip-types scripts/content/generate-present-tenses.ts",
     "content:select": "node --experimental-strip-types scripts/content/select-package.ts",
+    "content:build-personal": "node --experimental-strip-types scripts/content/build-personal-practice-package.ts",
+    "content:audit": "node --experimental-strip-types scripts/content/audit-package.ts",
     "content:validate": "node --experimental-strip-types scripts/content/validate-package.ts",
     "content:publish": "node --experimental-strip-types scripts/content/publish-package.ts --publication"
   },
