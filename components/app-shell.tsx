@@ -10,6 +10,7 @@ const navigation = [
   { symbol: "⌂", label: "Today", href: "/dashboard" },
   { symbol: "◇", label: "Vocabulary", href: "/vocabulary" },
   { symbol: "◌", label: "Review", href: "/review" },
+  { symbol: "✦", label: "Practice", href: "/practice" },
   { symbol: "↗", label: "Progress", href: null },
   { symbol: "⚙", label: "Settings", href: "/settings" },
 ] as const;
