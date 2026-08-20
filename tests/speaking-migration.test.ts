@@ -8,6 +8,13 @@ const migration = readFileSync(
   ),
   "utf8",
 ).toLocaleLowerCase("en");
+const twoMinuteMigration = readFileSync(
+  new URL(
+    "../supabase/migrations/20260820151310_extend_speaking_recording_to_two_minutes.sql",
+    import.meta.url,
+  ),
+  "utf8",
+).toLocaleLowerCase("en");
 
 describe("speaking database safety contract", () => {
   it("stores user-owned prompts and attempts behind RLS", () => {
@@ -57,6 +64,16 @@ describe("speaking database safety contract", () => {
     expect(migration).toContain("pg_advisory_xact_lock");
     expect(migration.indexOf("pg_advisory_xact_lock")).toBeLessThan(
       migration.indexOf("daily speaking limit reached"),
+    );
+  });
+
+  it("extends a private Speaking recording to two minutes", () => {
+    expect(twoMinuteMigration).toContain("duration_seconds between 1 and 120");
+    expect(twoMinuteMigration).toContain("audio_bytes between 3200 and 3840000");
+    expect(twoMinuteMigration).toContain("set file_size_limit = 3840000");
+    expect(twoMinuteMigration).toContain("set search_path = ''");
+    expect(twoMinuteMigration).toContain(
+      "grant execute on function public.begin_speaking_attempt",
     );
   });
 });

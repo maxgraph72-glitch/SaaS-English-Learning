@@ -82,7 +82,7 @@ export async function beginSpeakingAttemptAction(input: {
     || audioBytes < 3_200
     || audioBytes > MAX_SPEAKING_BYTES
   ) {
-    return { ok: false as const, message: "Record between 1 and 28 seconds before submitting." };
+    return { ok: false as const, message: "Record between 1 second and 2 minutes before submitting." };
   }
 
   const { supabase, user } = await requireViewer();

@@ -36,6 +36,27 @@ describe("Yandex SpeechKit provider", () => {
     });
   });
 
+  it("splits a two-minute recording into provider-safe chunks and joins transcripts", async () => {
+    const longAudio = new Uint8Array(3_840_000).fill(1);
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockImplementation(async (_url, init) => {
+        const body = init?.body as ArrayBuffer;
+        expect(body.byteLength).toBeLessThanOrEqual(896_000);
+        return new Response(
+          JSON.stringify({ result: `part ${fetchImpl.mock.calls.length}` }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      });
+
+    const result = await transcribeSpeakingAudio(longAudio, {
+      env: { SPEAKING_STT_PROVIDER: "yandex", YANDEX_AI_API_KEY: "test-key" },
+      fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
+    expect(result.transcript).toBe("part 1 part 2 part 3 part 4 part 5");
+  });
+
   it("supports a deterministic non-production fixture", async () => {
     const fetchImpl = vi.fn<typeof fetch>();
     const result = await transcribeSpeakingAudio(audio, {

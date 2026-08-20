@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 const navigation = [
   { symbol: "⌂", label: "Today", href: "/dashboard" },
   { symbol: "◇", label: "Vocabulary", href: "/vocabulary" },
+  { symbol: "◉", label: "Speaking", href: "/speaking" },
   { symbol: "◌", label: "Review", href: "/review" },
   { symbol: "✦", label: "Practice", href: "/practice" },
   { symbol: "↗", label: "Progress", href: null },

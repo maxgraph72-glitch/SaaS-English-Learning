@@ -54,6 +54,13 @@ function isDuplicateUpload(error: { message?: string; statusCode?: string | numb
     || /duplicate|already exists/i.test(error.message ?? "");
 }
 
+function formatRecordingTime(seconds: number) {
+  const wholeSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(wholeSeconds / 60);
+  const remainder = String(wholeSeconds % 60).padStart(2, "0");
+  return `${minutes}:${remainder}`;
+}
+
 export function SpeakingWorkspace({
   prompt,
   initialAttempt,
@@ -194,7 +201,7 @@ export function SpeakingWorkspace({
         chunks,
         startedAt: performance.now(),
       };
-      setMessage("Read the five sentences aloud. The recording stops automatically at 28 seconds.");
+      setMessage("Read the five sentences aloud. The recording stops automatically after 2 minutes.");
       setPhase("recording");
       timerRef.current = window.setInterval(() => {
         const runtime = runtimeRef.current;
@@ -311,7 +318,9 @@ export function SpeakingWorkspace({
         <div className={`speaking-recorder ${phase === "recording" ? "recording" : ""}`}>
           <div className="speaking-orb" aria-hidden="true"><span>●</span></div>
           <div>
-            <strong>{phase === "recording" ? `${recordedSeconds}s / ${MAX_SPEAKING_SECONDS}s` : "Up to 28 seconds"}</strong>
+            <strong>{phase === "recording"
+              ? `${formatRecordingTime(recordedSeconds)} / ${formatRecordingTime(MAX_SPEAKING_SECONDS)}`
+              : "Up to 2 minutes"}</strong>
             <span>Mono audio · private storage</span>
           </div>
           {phase === "recording" ? (

@@ -35,11 +35,11 @@ describe("browser speaking audio preparation", () => {
     expect(view.getInt16(4, true)).toBe(32767);
   });
 
-  it("keeps a 28 second recording below the synchronous API byte limit", () => {
-    const input = new Float32Array(48_000 * 28).fill(0.05);
+  it("prepares a two-minute recording within the application byte limit", () => {
+    const input = new Float32Array(48_000 * 120).fill(0.05);
     const prepared = prepareSpeakingAudio([input], 48_000);
-    expect(prepared.durationSeconds).toBe(28);
-    expect(prepared.pcm.byteLength).toBe(896_000);
-    expect(prepared.pcm.byteLength).toBeLessThan(MAX_SPEAKING_BYTES);
+    expect(prepared.durationSeconds).toBe(120);
+    expect(prepared.pcm.byteLength).toBe(3_840_000);
+    expect(prepared.pcm.byteLength).toBe(MAX_SPEAKING_BYTES);
   });
 });

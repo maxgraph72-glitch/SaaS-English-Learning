@@ -1,6 +1,6 @@
 export const SPEAKING_SAMPLE_RATE = 16_000;
-export const MAX_SPEAKING_SECONDS = 28;
-export const MAX_SPEAKING_BYTES = 1_000_000;
+export const MAX_SPEAKING_SECONDS = 120;
+export const MAX_SPEAKING_BYTES = MAX_SPEAKING_SECONDS * SPEAKING_SAMPLE_RATE * 2;
 
 export function mergeAudioChunks(chunks: readonly Float32Array[]) {
   const length = chunks.reduce((total, chunk) => total + chunk.length, 0);

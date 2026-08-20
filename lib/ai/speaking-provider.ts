@@ -3,6 +3,7 @@ import type { SpeakingFailureCode } from "../speaking/types";
 
 export const SPEAKING_PROVIDER_ID = "yandex_speechkit";
 export const SPEAKING_MODEL_ID = "general-en-us-v1";
+const SPEECHKIT_CHUNK_BYTES = 28 * 16_000 * 2;
 
 export class SpeakingProviderError extends Error {
   constructor(
@@ -62,41 +63,52 @@ export async function transcribeSpeakingAudio(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), parseTimeout(env.SPEAKING_STT_TIMEOUT_MS));
-  const body = audio.buffer.slice(audio.byteOffset, audio.byteOffset + audio.byteLength) as ArrayBuffer;
-
   try {
-    const response = await (options.fetchImpl ?? fetch)(buildSpeechRecognitionUrl(), {
-      method: "POST",
-      headers: {
-        Authorization: `Api-Key ${apiKey}`,
-        "Content-Type": "application/octet-stream",
-      },
-      body,
-      signal: controller.signal,
-    });
-
-    if (!response.ok) {
-      const code = response.status === 429 || response.status >= 500
-        ? "provider_unavailable"
-        : response.status === 400
-          ? "invalid_audio"
-          : "provider_error";
-      throw new SpeakingProviderError(code, "Yandex SpeechKit did not accept the recording.");
+    const chunks: Uint8Array[] = [];
+    for (let offset = 0; offset < audio.byteLength; offset += SPEECHKIT_CHUNK_BYTES) {
+      chunks.push(audio.subarray(offset, Math.min(offset + SPEECHKIT_CHUNK_BYTES, audio.byteLength)));
     }
 
-    const payload: unknown = await response.json();
-    const result = typeof payload === "object" && payload !== null
-      ? (payload as { result?: unknown }).result
-      : null;
-    if (typeof result !== "string" || !result.trim()) {
+    const transcripts = await Promise.all(chunks.map(async (chunk) => {
+      const body = chunk.buffer.slice(
+        chunk.byteOffset,
+        chunk.byteOffset + chunk.byteLength,
+      ) as ArrayBuffer;
+      const response = await (options.fetchImpl ?? fetch)(buildSpeechRecognitionUrl(), {
+        method: "POST",
+        headers: {
+          Authorization: `Api-Key ${apiKey}`,
+          "Content-Type": "application/octet-stream",
+        },
+        body,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const code = response.status === 429 || response.status >= 500
+          ? "provider_unavailable"
+          : response.status === 400
+            ? "invalid_audio"
+            : "provider_error";
+        throw new SpeakingProviderError(code, "Yandex SpeechKit did not accept the recording.");
+      }
+
+      const payload: unknown = await response.json();
+      const result = typeof payload === "object" && payload !== null
+        ? (payload as { result?: unknown }).result
+        : null;
+      return typeof result === "string" ? result.trim() : "";
+    }));
+    const transcript = transcripts.filter(Boolean).join(" ");
+    if (!transcript) {
       throw new SpeakingProviderError("no_speech", "No English speech was recognized.");
     }
-    if (result.length > 5_000) {
+    if (transcript.length > 5_000) {
       throw new SpeakingProviderError("provider_error", "The transcript was unexpectedly long.");
     }
 
     return {
-      transcript: result.trim(),
+      transcript,
       provider: SPEAKING_PROVIDER_ID,
       model: SPEAKING_MODEL_ID,
     };
