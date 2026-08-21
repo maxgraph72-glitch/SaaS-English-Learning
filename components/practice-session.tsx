@@ -5,12 +5,20 @@ import { useEffect, useRef, useState } from "react";
 import { submitPracticeAttemptAction } from "@/app/actions/practice";
 import {
   canSubmitPracticeAnswer,
+  completePracticePrompt,
   currentPracticeExercise,
+  displayedPracticeExercise,
   getOrCreateSubmissionId,
   practiceSessionProgress,
   type PracticeSessionResult,
 } from "@/lib/practice/session";
 import type { PracticeAttemptOutcome, PracticeExercise } from "@/lib/practice/types";
+
+interface PracticeFeedback {
+  outcome: PracticeAttemptOutcome;
+  exercise: PracticeExercise;
+  submittedAnswer: string;
+}
 
 export function PracticeSession({
   exercises,
@@ -22,7 +30,7 @@ export function PracticeSession({
   const [completed, setCompleted] = useState(0);
   const [answer, setAnswer] = useState("");
   const [pending, setPending] = useState(false);
-  const [feedback, setFeedback] = useState<PracticeAttemptOutcome | null>(null);
+  const [feedback, setFeedback] = useState<PracticeFeedback | null>(null);
   const [message, setMessage] = useState("");
   const [results, setResults] = useState<PracticeSessionResult[]>([]);
   const submissionIds = useRef(new Map<string, string>());
@@ -30,6 +38,11 @@ export function PracticeSession({
   const answerInput = useRef<HTMLInputElement>(null);
   const feedbackHeading = useRef<HTMLHeadingElement>(null);
   const current = currentPracticeExercise(exercises, completed);
+  const displayedExercise = displayedPracticeExercise(
+    exercises,
+    completed,
+    feedback?.exercise ?? null,
+  );
   const progress = practiceSessionProgress(exercises.length, completed);
 
   useEffect(() => {
@@ -67,7 +80,11 @@ export function PracticeSession({
         setMessage(result.message);
         return;
       }
-      setFeedback(result.outcome);
+      setFeedback({
+        outcome: result.outcome,
+        exercise: current,
+        submittedAnswer: answer.trim(),
+      });
       setResults((existing) => [
         ...existing,
         { exerciseId: current.id, correct: result.outcome.is_correct },
@@ -80,8 +97,8 @@ export function PracticeSession({
   }
 
   function nextExercise() {
-    if (!current || !feedback) return;
-    submissionIds.current.delete(current.id);
+    if (!feedback) return;
+    submissionIds.current.delete(feedback.exercise.id);
     setCompleted((value) => value + 1);
     setAnswer("");
     setFeedback(null);
@@ -104,7 +121,7 @@ export function PracticeSession({
     );
   }
 
-  if (!current) {
+  if (!displayedExercise) {
     const correct = results.filter((result) => result.correct).length;
     return (
       <div className="page-container review-page">
@@ -138,7 +155,7 @@ export function PracticeSession({
     <div className="page-container review-page">
       <section className="review-heading">
         <div>
-          <p className="eyebrow">Grammar practice · {current.cefr_estimate}</p>
+          <p className="eyebrow">Grammar practice · {displayedExercise.cefr_estimate}</p>
           <h1>Choose the exact grammar form.</h1>
           <p>Complete one sentence at a time. Your answer is checked deterministically.</p>
         </div>
@@ -156,11 +173,11 @@ export function PracticeSession({
 
         <article className={feedback ? "review-card revealed" : "review-card"}>
           <div className="card-meta">
-            <span>{current.grammar_topic.replaceAll("_", " ")}</span>
-            <span className="group-badge repeat">{current.exercise_type.replaceAll("_", " ")}</span>
+            <span>{displayedExercise.grammar_topic.replaceAll("_", " ")}</span>
+            <span className="group-badge repeat">{displayedExercise.exercise_type.replaceAll("_", " ")}</span>
           </div>
           <p className="eyebrow">Fill in the blank</p>
-          <h2 id="practice-prompt">{current.prompt}</h2>
+          <h2 id="practice-prompt">{displayedExercise.prompt}</h2>
 
           {!feedback ? (
             <form
@@ -172,7 +189,7 @@ export function PracticeSession({
               }}
             >
               <label htmlFor="practice-answer">
-                {`Answer for: ${current.prompt}`}
+                {`Answer for: ${displayedExercise.prompt}`}
                 <input
                   id="practice-answer"
                   ref={answerInput}
@@ -194,11 +211,30 @@ export function PracticeSession({
             </form>
           ) : (
             <div className="revealed-answer" role="status" aria-live="polite">
-              <span>{feedback.is_correct ? "Correct" : "Not quite"}</span>
+              <span
+                className={feedback.outcome.is_correct
+                  ? "practice-feedback-status correct"
+                  : "practice-feedback-status incorrect"}
+              >
+                {feedback.outcome.is_correct ? "Correct ✓" : "Incorrect ✕"}
+              </span>
               <strong ref={feedbackHeading} tabIndex={-1}>
-                Correct answer: {feedback.correct_answer}
+                {feedback.outcome.is_correct
+                  ? "Your answer is correct."
+                  : "Your answer is not correct yet."}
               </strong>
-              <small>{feedback.explanation || current.explanation || "Use the form shown in the answer."}</small>
+              <p>Your answer: <strong>{feedback.submittedAnswer}</strong></p>
+              <p>Correct answer: <strong>{feedback.outcome.correct_answer}</strong></p>
+              <p>
+                Complete sentence:{" "}
+                <strong>
+                  {completePracticePrompt(
+                    feedback.exercise.prompt,
+                    feedback.outcome.correct_answer,
+                  )}
+                </strong>
+              </p>
+              <small>{feedback.outcome.explanation || feedback.exercise.explanation || "Use the form shown in the answer."}</small>
               <button className="primary-button" type="button" onClick={nextExercise}>
                 {completed + 1 === exercises.length ? "Finish session" : "Next exercise"}
               </button>

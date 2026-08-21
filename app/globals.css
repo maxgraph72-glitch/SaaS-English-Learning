@@ -1951,8 +1951,26 @@ kbd {
   text-transform: uppercase;
 }
 
-.revealed-answer strong {
+.revealed-answer > strong {
   font-size: 24px;
+}
+
+.revealed-answer p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.revealed-answer p strong {
+  color: var(--text);
+  font-size: inherit;
+}
+
+.revealed-answer .practice-feedback-status.correct {
+  color: var(--accent);
+}
+
+.revealed-answer .practice-feedback-status.incorrect {
+  color: var(--danger);
 }
 
 .review-outcomes {

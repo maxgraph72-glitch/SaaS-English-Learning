@@ -42,3 +42,15 @@ export function currentPracticeExercise(
 ): PracticeExercise | null {
   return exercises[completed] ?? null;
 }
+
+export function displayedPracticeExercise(
+  exercises: readonly PracticeExercise[],
+  completed: number,
+  feedbackExercise: PracticeExercise | null,
+): PracticeExercise | null {
+  return feedbackExercise ?? currentPracticeExercise(exercises, completed);
+}
+
+export function completePracticePrompt(prompt: string, answer: string): string {
+  return prompt.replace("___", answer.trim());
+}

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   canSubmitPracticeAnswer,
+  completePracticePrompt,
   currentPracticeExercise,
+  displayedPracticeExercise,
   getOrCreateSubmissionId,
   practiceSessionProgress,
 } from "../lib/practice/session";
@@ -45,5 +47,26 @@ describe("critical practice session flow", () => {
     expect(getOrCreateSubmissionId(ids, "exercise-1", factory)).toBe("submission-1");
     expect(getOrCreateSubmissionId(ids, "exercise-1", factory)).toBe("submission-1");
     expect(counter).toBe(1);
+  });
+
+  it("keeps the answered exercise visible if refreshed props reorder the session", () => {
+    const answeredExercise = {
+      ...exercises[0],
+      id: "answered",
+      prompt: "She ___ every morning. (read)",
+    };
+    const refreshedExercise = {
+      ...exercises[1],
+      id: "replacement",
+      prompt: "They ___ now. (work)",
+    };
+
+    expect(displayedPracticeExercise([refreshedExercise], 0, answeredExercise))
+      .toBe(answeredExercise);
+  });
+
+  it("shows the correct answer inside the same prompt", () => {
+    expect(completePracticePrompt("She ___ every morning. (read)", "reads"))
+      .toBe("She reads every morning. (read)");
   });
 });

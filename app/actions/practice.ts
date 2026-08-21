@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { requireViewer } from "@/lib/supabase/viewer";
 import type { PracticeAttemptOutcome } from "@/lib/practice/types";
 
@@ -40,6 +39,12 @@ export async function submitPracticeAttemptAction(input: {
     };
   }
 
-  revalidatePath("/practice");
+  if (outcome.exercise_id !== input.exerciseId) {
+    return {
+      ok: false as const,
+      message: "The saved result did not match this exercise. Please retry.",
+    };
+  }
+
   return { ok: true as const, outcome };
 }

@@ -17,6 +17,10 @@ const practiceComponent = readFileSync(
   new URL("../components/practice-session.tsx", import.meta.url),
   "utf8",
 );
+const practiceAction = readFileSync(
+  new URL("../app/actions/practice.ts", import.meta.url),
+  "utf8",
+);
 
 describe("practice database and application safety contract", () => {
   it("keeps source data private and exposes the minimum public grants", () => {
@@ -54,6 +58,10 @@ describe("practice database and application safety contract", () => {
     expect(practiceComponent).toContain("hasFeedback");
     expect(practiceComponent).toContain("getOrCreateSubmissionId");
     expect(practiceComponent).toContain("Correct answer:");
+    expect(practiceComponent).toContain("Your answer:");
+    expect(practiceComponent).toContain("Complete sentence:");
     expect(practiceComponent).toContain("/practice/sources");
+    expect(practiceAction).not.toContain("revalidatePath");
+    expect(practiceAction).toContain("outcome.exercise_id !== input.exerciseId");
   });
 });
